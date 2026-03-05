@@ -10,32 +10,14 @@ permissions:
 
 jobs:
   build-artifacts:
-    name: Build artifacts (${{ matrix.target_os }}/${{ matrix.target_arch }})
-    runs-on: ${{ matrix.runner }}
+    name: Build artifacts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-latest
-            target_os: linux
-            target_arch: amd64
-            bin_ext: ""
-          - runner: ubuntu-24.04-arm
-            target_os: linux
-            target_arch: arm64
-            bin_ext: ""
-          - runner: macos-13
-            target_os: darwin
-            target_arch: amd64
-            bin_ext: ""
-          - runner: macos-14
-            target_os: darwin
-            target_arch: arm64
-            bin_ext: ""
-          - runner: windows-latest
-            target_os: windows
-            target_arch: amd64
-            bin_ext: ".exe"
+        os:
+          - ubuntu-latest
+          - macos-latest
 
     steps:
       - name: Checkout
@@ -57,26 +39,20 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install libusb
 
-      - name: Install libusb (Windows)
-        if: runner.os == 'Windows'
-        run: choco install -y libusb
-
       - name: Build release binary
         shell: bash
-        env:
-          GOOS: ${{ matrix.target_os }}
-          GOARCH: ${{ matrix.target_arch }}
-          BIN_EXT: ${{ matrix.bin_ext }}
         run: |
           set -euo pipefail
-          BIN_NAME="rtt3168ctl-${GOOS}-${GOARCH}${BIN_EXT}"
+          GOOS="$(go env GOOS)"
+          GOARCH="$(go env GOARCH)"
+          BIN_NAME="rtt3168ctl-${GOOS}-${GOARCH}"
           mkdir -p dist
           go build -trimpath -ldflags "-s -w" -o "dist/${BIN_NAME}" ./cmd/rtt3168ctl
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          name: release-${{ matrix.os }}
           path: dist/rtt3168ctl-*
           if-no-files-found: error
 
