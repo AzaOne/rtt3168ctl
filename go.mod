@@ -1,4 +1,4 @@
-module mouse-control
+module rtt3168ctl
 
 go 1.25.0
 

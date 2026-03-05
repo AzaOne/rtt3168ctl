@@ -1,0 +1,32 @@
+# Go build artifacts
+/bin/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+coverage.out
+
+# Local binaries
+/rtt3168ctl
+/main
+
+# Go workspace metadata
+go.work
+go.work.sum
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
