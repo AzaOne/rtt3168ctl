@@ -63,6 +63,7 @@ jobs:
         env:
           GOOS: ${{ matrix.target_os }}
           GOARCH: ${{ matrix.target_arch }}
+          CGO_ENABLED: "1"
         run: |
           set -euo pipefail
           if [ "${GOOS}" = "linux" ] && [ "${GOARCH}" = "386" ]; then
