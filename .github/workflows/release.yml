@@ -10,14 +10,27 @@ permissions:
 
 jobs:
   build-artifacts:
-    name: Build artifacts (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Build artifacts (${{ matrix.target_os }}/${{ matrix.target_arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+        include:
+          - runner: ubuntu-latest
+            target_os: linux
+            target_arch: 386
+          - runner: ubuntu-latest
+            target_os: linux
+            target_arch: amd64
+          - runner: ubuntu-24.04-arm
+            target_os: linux
+            target_arch: arm64
+          - runner: macos-13
+            target_os: darwin
+            target_arch: amd64
+          - runner: macos-14
+            target_os: darwin
+            target_arch: arm64
 
     steps:
       - name: Checkout
@@ -32,8 +45,14 @@ jobs:
       - name: Install libusb (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libusb-1.0-0-dev
+          if [ "${{ matrix.target_arch }}" = "386" ]; then
+            sudo dpkg --add-architecture i386
+            sudo apt-get update
+            sudo apt-get install -y gcc-multilib libusb-1.0-0-dev:i386
+          else
+            sudo apt-get update
+            sudo apt-get install -y libusb-1.0-0-dev
+          fi
 
       - name: Install libusb (macOS)
         if: runner.os == 'macOS'
@@ -41,10 +60,14 @@ jobs:
 
       - name: Build release binary
         shell: bash
+        env:
+          GOOS: ${{ matrix.target_os }}
+          GOARCH: ${{ matrix.target_arch }}
         run: |
           set -euo pipefail
-          GOOS="$(go env GOOS)"
-          GOARCH="$(go env GOARCH)"
+          if [ "${GOOS}" = "linux" ] && [ "${GOARCH}" = "386" ]; then
+            export CC="gcc -m32"
+          fi
           BIN_NAME="rtt3168ctl-${GOOS}-${GOARCH}"
           mkdir -p dist
           go build -trimpath -ldflags "-s -w" -o "dist/${BIN_NAME}" ./cmd/rtt3168ctl
@@ -52,7 +75,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.os }}
+          name: release-${{ matrix.target_os }}-${{ matrix.target_arch }}
           path: dist/rtt3168ctl-*
           if-no-files-found: error
 
