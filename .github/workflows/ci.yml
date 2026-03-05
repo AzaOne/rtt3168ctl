@@ -33,10 +33,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libusb-1.0-0-dev
 
-      - name: Install libusb (macOS)
-        if: runner.os == 'macOS'
-        run: brew install libusb
-
       - name: Run tests
         run: go test ./...
 
