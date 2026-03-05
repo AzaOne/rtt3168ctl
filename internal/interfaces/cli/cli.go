@@ -15,7 +15,7 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 
 	modePtr := fs.String("mode", "", "Operation mode")
 	valPtr := fs.String("val", "", "Value for operation")
-	dpiSlotPtr := fs.Int("slot", 1, "DPI Slot (1-6)")
+	dpiSlotPtr := fs.Int("slot", 1, "DPI Slot (1-4)")
 	colorIdxPtr := fs.Int("color", -1, "Color index for DPI slot (0-15)")
 	rgbSpeedPtr := fs.Int("speed", -1, "RGB Animation Speed (0-255)")
 	regPtr := fs.Int("reg", -1, "Raw register address")
@@ -40,7 +40,7 @@ Options:
   -val string
         Value for operation (DPI speed, RGB mode, etc.)
   -slot int
-        Target DPI slot (1-6) (default 1)
+        Target DPI slot (1-4) (default 1)
   -color int
         Color index for DPI slot (0-15). -1 keeps current. (default -1)
   -speed int
@@ -52,7 +52,7 @@ Options:
 
 Arguments detail:
   [dpi]
-    -slot <1-6>   : Target DPI slot (Slots 5 and 6 are hidden hardware slots)
+    -slot <1-4>   : Target DPI slot
     -val  <int>   : DPI speed (200 to 3200, step 200)
     -color <0-15> : LED color index
 

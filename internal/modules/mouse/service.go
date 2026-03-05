@@ -72,8 +72,8 @@ func (s *Service) ReadStatus() (Status, error) {
 		return Status{}, err
 	}
 
-	slots := make([]SlotStatus, 0, 6)
-	for i := 1; i <= 6; i++ {
+	slots := make([]SlotStatus, 0, 4)
+	for i := 1; i <= 4; i++ {
 		regID := uint16(i + 1)
 		val, err := s.repo.ReadRegister(regID)
 		if err != nil {
@@ -141,8 +141,8 @@ func (s *Service) WriteRaw(regID uint16, value uint8) error {
 }
 
 func (s *Service) SwitchDPISlot(slot int) error {
-	if slot < 1 || slot > 6 {
-		return fmt.Errorf("slot must be in range 1-6")
+	if slot < 1 || slot > 4 {
+		return fmt.Errorf("slot must be in range 1-4")
 	}
 	return s.repo.WriteRegister(RegDPISelect, uint8((slot-1)*32))
 }
@@ -204,8 +204,8 @@ func (s *Service) SetRate(rateHz int) error {
 }
 
 func (s *Service) SetDPI(slot, dpi, colorIdx int) error {
-	if slot < 1 || slot > 6 {
-		return fmt.Errorf("invalid DPI slot %d; must be 1-6", slot)
+	if slot < 1 || slot > 4 {
+		return fmt.Errorf("invalid DPI slot %d; must be 1-4", slot)
 	}
 	if dpi < 200 || dpi > 3200 || dpi%200 != 0 {
 		return fmt.Errorf("invalid DPI %d; must be 200..3200 in steps of 200", dpi)

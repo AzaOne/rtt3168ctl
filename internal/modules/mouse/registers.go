@@ -9,8 +9,8 @@ const (
 	RegDPI2      uint16 = 3
 	RegDPI3      uint16 = 4
 	RegDPI4      uint16 = 5
-	RegDPI5      uint16 = 6
-	RegDPI6      uint16 = 7
+	RegDPI5      uint16 = 6 // buggy, in oficial software not used
+	RegDPI6      uint16 = 7 // buggy, in oficial software not used
 	RegDPISelect uint16 = 9
 	RegRGBMode   uint16 = 10
 	RegCPIButton uint16 = 11
