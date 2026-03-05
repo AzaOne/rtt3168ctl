@@ -18,6 +18,7 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	dpiSlotPtr := fs.Int("slot", 1, "DPI Slot (1-4)")
 	colorIdxPtr := fs.Int("color", -1, "Color index for DPI slot (0-15)")
 	rgbSpeedPtr := fs.Int("speed", -1, "RGB Animation Speed (0-255)")
+	jsonPtr := fs.Bool("json", false, "JSON output for 'read' mode")
 	regPtr := fs.Int("reg", -1, "Raw register address")
 	regValPtr := fs.Int("regval", -1, "Raw register value")
 
@@ -45,6 +46,8 @@ Options:
         Color index for DPI slot (0-15). -1 keeps current. (default -1)
   -speed int
         RGB Animation Speed (0-255). -1 keeps current. (default -1)
+  -json
+        JSON output for 'read' mode
   -reg int
         Register address for 'write' mode (default -1)
   -regval int
@@ -66,10 +69,11 @@ Arguments detail:
 
 Examples:
   %s -mode read
+  %s -mode read -json
   %s -mode dpi -slot 2 -val 1200 -color 5
   %s -mode cpi -val vol_up
   %s -mode rate -val 1000
-`, binName, binName, binName, binName, binName)
+`, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
 
@@ -91,6 +95,7 @@ Examples:
 		DPISlot:    *dpiSlotPtr,
 		ColorIndex: *colorIdxPtr,
 		RGBSpeed:   *rgbSpeedPtr,
+		JSONOutput: *jsonPtr,
 		Register:   *regPtr,
 		RegisterV:  *regValPtr,
 	}, false, nil

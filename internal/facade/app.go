@@ -1,6 +1,7 @@
 package facade
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ type Command struct {
 	DPISlot    int
 	ColorIndex int
 	RGBSpeed   int
+	JSONOutput bool
 	Register   int
 	RegisterV  int
 }
@@ -56,6 +58,9 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		status, err := svc.ReadStatus()
 		if err != nil {
 			return err
+		}
+		if cmd.JSONOutput {
+			return printStatusJSON(out, status)
 		}
 		printStatus(out, status)
 		return nil
@@ -143,4 +148,49 @@ func printStatus(out io.Writer, status mouse.Status) {
 	fmt.Fprintf(out, "Polling Rate:      %s\n", status.Rate)
 	fmt.Fprintf(out, "RGB Mode:          %s (Speed: %d)\n", status.RGBMode, status.RGBSpeed)
 	fmt.Fprintf(out, "CPI Button:        %s (Raw: 0x%02X)\n", status.CPIAction, status.CPIRaw)
+}
+
+type jsonStatus struct {
+	SensorID   uint8            `json:"sensor_id"`
+	ActiveSlot int              `json:"active_slot"`
+	Slots      []jsonStatusSlot `json:"slots"`
+	Rate       string           `json:"rate"`
+	RGBMode    string           `json:"rgb_mode"`
+	RGBSpeed   uint8            `json:"rgb_speed"`
+	CPIAction  string           `json:"cpi_action"`
+	CPIRaw     uint8            `json:"cpi_raw"`
+}
+
+type jsonStatusSlot struct {
+	Slot   int   `json:"slot"`
+	DPI    int   `json:"dpi"`
+	Color  int   `json:"color"`
+	Raw    uint8 `json:"raw"`
+	Active bool  `json:"active"`
+}
+
+func printStatusJSON(out io.Writer, status mouse.Status) error {
+	jsonSlots := make([]jsonStatusSlot, 0, len(status.Slots))
+	for _, slot := range status.Slots {
+		jsonSlots = append(jsonSlots, jsonStatusSlot{
+			Slot:   slot.Slot,
+			DPI:    slot.DPI,
+			Color:  slot.Color,
+			Raw:    slot.Raw,
+			Active: slot.Active,
+		})
+	}
+
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	return enc.Encode(jsonStatus{
+		SensorID:   status.SensorID,
+		ActiveSlot: status.ActiveSlot,
+		Slots:      jsonSlots,
+		Rate:       status.Rate,
+		RGBMode:    status.RGBMode,
+		RGBSpeed:   status.RGBSpeed,
+		CPIAction:  status.CPIAction,
+		CPIRaw:     status.CPIRaw,
+	})
 }

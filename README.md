@@ -55,6 +55,7 @@ The binary will be available at `build/rtt3168ctl`.
 - `-val` - mode value
 - `-color` - color index (`0-15`), `-1` = keep current
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
+- `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
 
 ## Mode Values
@@ -104,6 +105,12 @@ Override example:
 
 ```bash
 MOUSE_VID=0x093A MOUSE_PID=0x2533 ./build/rtt3168ctl -mode read
+```
+
+Machine-readable output example:
+
+```bash
+./build/rtt3168ctl -mode read -json
 ```
 
 ## Useful Make Commands
