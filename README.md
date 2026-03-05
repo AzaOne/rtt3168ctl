@@ -123,13 +123,6 @@ make clean
 - `CI` workflow (`.github/workflows/ci.yml`) runs tests/builds on push and pull requests.
 - `Release` workflow (`.github/workflows/release.yml`) publishes release assets when a tag `v*` is pushed.
 
-Release example:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
 ## Note
 
 `write` and `dump` are intended for low-level diagnostics. Invalid register values may cause unpredictable device behavior.
