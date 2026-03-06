@@ -54,6 +54,7 @@ The binary will be available at `build/rtt3168ctl`.
 - `-slot` - DPI slot (`1-4`)
 - `-val` - mode value
 - `-color` - color index (`0-15`), `-1` = keep current
+- `-switch-slot` - for `-mode dpi` also activate target slot after write
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
 - `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
@@ -64,10 +65,16 @@ The binary will be available at `build/rtt3168ctl`.
 - `-val`: DPI in range `200..3200`, step `200`
 - `-slot`: `1..4`
 - `-color`: `0..15` (optional)
+- `-switch-slot`: optional, activates target slot after updating DPI/color
 
 Example:
 ```bash
 ./build/rtt3168ctl -mode dpi -slot 1 -val 800 -color 3
+```
+
+Switch active slot while writing:
+```bash
+./build/rtt3168ctl -mode dpi -slot 2 -val 1600 -color 0 -switch-slot
 ```
 
 ### `-mode rgb`

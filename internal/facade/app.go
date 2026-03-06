@@ -16,6 +16,7 @@ type Command struct {
 	Value      string
 	DPISlot    int
 	ColorIndex int
+	SwitchSlot bool
 	RGBSpeed   int
 	JSONOutput bool
 	Register   int
@@ -110,14 +111,18 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("invalid DPI value %q", cmd.Value)
 		}
-		if err := svc.SetDPI(cmd.DPISlot, dpi, cmd.ColorIndex); err != nil {
+		if err := svc.SetDPI(cmd.DPISlot, dpi, cmd.ColorIndex, cmd.SwitchSlot); err != nil {
 			return err
 		}
+		switchText := ""
+		if cmd.SwitchSlot {
+			switchText = ", active slot switched"
+		}
 		if cmd.ColorIndex < 0 {
-			fmt.Fprintf(out, "DPI Slot %d set to %d (Color: unchanged)\n", cmd.DPISlot, dpi)
+			fmt.Fprintf(out, "DPI Slot %d set to %d (Color: unchanged%s)\n", cmd.DPISlot, dpi, switchText)
 			return nil
 		}
-		fmt.Fprintf(out, "DPI Slot %d set to %d (Color: %d)\n", cmd.DPISlot, dpi, cmd.ColorIndex)
+		fmt.Fprintf(out, "DPI Slot %d set to %d (Color: %d%s)\n", cmd.DPISlot, dpi, cmd.ColorIndex, switchText)
 		return nil
 	case "cpi":
 		if cmd.Value == "" {

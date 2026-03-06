@@ -203,7 +203,7 @@ func (s *Service) SetRate(rateHz int) error {
 	return s.repo.WriteRegister(RegRate, rate)
 }
 
-func (s *Service) SetDPI(slot, dpi, colorIdx int) error {
+func (s *Service) SetDPI(slot, dpi, colorIdx int, switchSlot bool) error {
 	if slot < 1 || slot > 4 {
 		return fmt.Errorf("invalid DPI slot %d; must be 1-4", slot)
 	}
@@ -229,6 +229,10 @@ func (s *Service) SetDPI(slot, dpi, colorIdx int) error {
 	newVal := (color << 4) | dpiIdx
 	if err := s.repo.WriteRegister(target, newVal); err != nil {
 		return err
+	}
+
+	if !switchSlot {
+		return nil
 	}
 
 	return s.repo.WriteRegister(RegDPISelect, uint8((slot-1)*32))
