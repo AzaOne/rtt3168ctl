@@ -1,6 +1,6 @@
 # rtt3168ctl
 
-CLI utility for controlling a USB mouse based on the **PixArt RTT3168CG2** chip via vendor control transfers.
+CLI utility for controlling a USB mouse based on the **RTT3168CG2** chip via vendor control transfers.
 
 Supported features:
 - read current mouse status;
