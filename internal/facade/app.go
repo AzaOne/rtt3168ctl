@@ -112,86 +112,11 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		}
 		fmt.Fprintf(out, "Written 0x%02X to Register %d\n", cmd.RegisterV, cmd.Register)
 		return nil
-	case "switch":
-		if err := svc.SwitchDPISlot(cmd.ActiveSlot); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "Activated DPI Slot %d\n", cmd.ActiveSlot)
-		return nil
-	case "rgb":
-		if cmd.RGBMode == "" {
-			return errors.New("provide mode value for RGB")
-		}
-		if err := svc.SetRGB(cmd.RGBMode, cmd.RGBSpeed); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "RGB Mode set to %s\n", cmd.RGBMode)
-		return nil
-	case "rate":
-		if cmd.RateHz < 0 {
-			return errors.New("provide rate value")
-		}
-		if err := svc.SetRate(cmd.RateHz); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "Polling rate set to %dHz\n", cmd.RateHz)
-		return nil
-	case "dpi":
-		slot, dpi, err := singleDPISetting(cmd.DPI)
-		if err != nil {
-			return err
-		}
-		color := cmd.Color[slot-1]
-		switchSlot := cmd.ActiveSlot == slot
-		if err := svc.SetDPI(slot, dpi, color, switchSlot); err != nil {
-			return err
-		}
-		switchText := ""
-		if switchSlot {
-			switchText = ", active slot switched"
-		}
-		if color < 0 {
-			fmt.Fprintf(out, "DPI Slot %d set to %d (Color: unchanged%s)\n", slot, dpi, switchText)
-			return nil
-		}
-		fmt.Fprintf(out, "DPI Slot %d set to %d (Color: %d%s)\n", slot, dpi, color, switchText)
-		return nil
-	case "cpi":
-		if cmd.CPIAction == "" {
-			return errors.New("provide action for CPI")
-		}
-		if err := svc.SetCPIAction(cmd.CPIAction); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "CPI Button bound to: %s\n", cmd.CPIAction)
-		return nil
 	case "apply":
 		return applyAllSettings(svc, cmd, out)
 	default:
-		return fmt.Errorf("unknown mode %q; use -h for help", cmd.Mode)
+		return fmt.Errorf("unknown mode %q; use read, apply, dump, write", cmd.Mode)
 	}
-}
-
-func singleDPISetting(dpi [4]int) (slot int, value int, err error) {
-	targetSlot := -1
-	targetDPI := -1
-
-	for i := 0; i < len(dpi); i++ {
-		if dpi[i] < 0 {
-			continue
-		}
-		if targetSlot != -1 {
-			return 0, 0, errors.New("dpi mode accepts only one target slot")
-		}
-		targetSlot = i + 1
-		targetDPI = dpi[i]
-	}
-
-	if targetSlot == -1 {
-		return 0, 0, errors.New("provide DPI value for one slot")
-	}
-
-	return targetSlot, targetDPI, nil
 }
 
 func applyAllSettings(svc *mouse.Service, cmd Command, out io.Writer) error {

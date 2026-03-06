@@ -16,23 +16,23 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	fs.SetOutput(errOut)
 
 	modePtr := fs.String("mode", "", "Operation mode")
-	valPtr := fs.String("val", "", "Value for operation")
-	dpiSlotPtr := fs.Int("slot", 1, "DPI Slot (1-4)")
-	colorIdxPtr := fs.Int("color", -1, "Color index for DPI slot (0-15)")
-	switchSlotPtr := fs.Bool("switch-slot", false, "In 'dpi' mode, also activate target DPI slot")
+	dpiSlotPtr := fs.Int("slot", 1, "Target DPI slot (1-4)")
+	dpiPtr := fs.String("dpi", "", "Value for -slot as DPI or DPI:Color (e.g. 800 or 800:1)")
+	colorIdxPtr := fs.Int("color", -1, "In 'apply' mode with -dpi: color index for -slot (0-15)")
+	switchSlotPtr := fs.Bool("switch-slot", false, "In 'apply' mode with -dpi/-slot: also activate target slot")
 	rgbSpeedPtr := fs.Int("speed", -1, "RGB Animation Speed (0-255)")
-	dpi1Ptr := fs.String("dpi1", "", "In 'apply' mode: slot 1 value as DPI or DPI:Color (e.g. 800 or 800:3)")
-	dpi2Ptr := fs.String("dpi2", "", "In 'apply' mode: slot 2 value as DPI or DPI:Color (e.g. 1200 or 1200:5)")
-	dpi3Ptr := fs.String("dpi3", "", "In 'apply' mode: slot 3 value as DPI or DPI:Color (e.g. 1600 or 1600:7)")
-	dpi4Ptr := fs.String("dpi4", "", "In 'apply' mode: slot 4 value as DPI or DPI:Color (e.g. 2000 or 2000:9)")
-	color1Ptr := fs.Int("color1", -1, "In 'apply' mode: Color index for slot 1 (0-15)")
-	color2Ptr := fs.Int("color2", -1, "In 'apply' mode: Color index for slot 2 (0-15)")
-	color3Ptr := fs.Int("color3", -1, "In 'apply' mode: Color index for slot 3 (0-15)")
-	color4Ptr := fs.Int("color4", -1, "In 'apply' mode: Color index for slot 4 (0-15)")
-	activeSlotPtr := fs.Int("active-slot", -1, "In 'apply' mode: activate DPI slot (1-4)")
-	ratePtr := fs.Int("rate", -1, "In 'apply' mode: USB polling rate (125/250/500/1000)")
-	rgbModePtr := fs.String("rgb-mode", "", "In 'apply' mode: RGB mode (off/on/breath/cycle6/cycle12/cycle768)")
-	cpiActionPtr := fs.String("cpi-action", "", "In 'apply' mode: CPI button action")
+	dpi1Ptr := fs.String("dpi1", "", "Slot 1 value as DPI or DPI:Color (e.g. 800 or 800:3)")
+	dpi2Ptr := fs.String("dpi2", "", "Slot 2 value as DPI or DPI:Color (e.g. 1200 or 1200:5)")
+	dpi3Ptr := fs.String("dpi3", "", "Slot 3 value as DPI or DPI:Color (e.g. 1600 or 1600:7)")
+	dpi4Ptr := fs.String("dpi4", "", "Slot 4 value as DPI or DPI:Color (e.g. 2000 or 2000:9)")
+	color1Ptr := fs.Int("color1", -1, "Color index for slot 1 (0-15)")
+	color2Ptr := fs.Int("color2", -1, "Color index for slot 2 (0-15)")
+	color3Ptr := fs.Int("color3", -1, "Color index for slot 3 (0-15)")
+	color4Ptr := fs.Int("color4", -1, "Color index for slot 4 (0-15)")
+	activeSlotPtr := fs.Int("active-slot", -1, "Activate DPI slot (1-4)")
+	ratePtr := fs.Int("rate", -1, "USB polling rate (125/250/500/1000)")
+	rgbModePtr := fs.String("rgb-mode", "", "RGB mode (off/on/breath/cycle6/cycle12/cycle768)")
+	cpiActionPtr := fs.String("cpi-action", "", "CPI button action")
 	jsonPtr := fs.Bool("json", false, "JSON output for 'read' mode")
 	regPtr := fs.Int("reg", -1, "Raw register address")
 	regValPtr := fs.Int("regval", -1, "Raw register value")
@@ -42,40 +42,35 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 		
 Commands:
   read      Read current hardware configuration
-  dpi       Configure a specific DPI slot (speed and color)
-  switch    Switch active DPI slot
-  rgb       Configure RGB lighting mode and animation speed
-  rate      Set USB polling rate (Hz)
-  cpi       Bind a hardware action to the CPI button (Button 6)
-  apply     Apply multiple settings in one run (good for cron/startup)
-  dump      Print raw hex dump of Bank 1 memory
+  apply     Apply one or more settings
+  dump      Dump bank 1 registers (1..30)
   write     Write a raw byte to a memory register (Advanced)
 
 Options:
   -mode string
         Operation mode (required)
-  -val string
-        Value for operation (DPI speed, RGB mode, etc.)
+  -dpi string
+        Value for -slot as DPI or DPI:Color (e.g. 800 or 800:1)
   -slot int
-        Target DPI slot (1-4) (default 1)
+        Target slot for -dpi and -switch-slot (1-4) (default 1)
   -color int
-        Color index for DPI slot (0-15). -1 keeps current. (default -1)
+        With -dpi: color index for -slot (0-15). -1 keeps current. (default -1)
   -switch-slot
-        In 'dpi' mode, also activate target DPI slot
+     	With -dpi/-slot, also activate target DPI slot
   -speed int
         RGB Animation Speed (0-255). -1 keeps current. (default -1)
   -dpi1..-dpi4 string
-        In 'apply' mode: slot value as DPI or DPI:Color (e.g. 800 or 800:3). Empty/-1 skips.
+        Slot value as DPI or DPI:Color (e.g. 800 or 800:3). Empty/-1 skips.
   -color1..-color4 int
-        In 'apply' mode: color index per slot (0-15). -1 keeps current.
+        Color index per slot (0-15). -1 keeps current.
   -active-slot int
-        In 'apply' mode: slot to activate (1-4). -1 skips.
+        Slot to activate (1-4). -1 skips.
   -rate int
-        In 'apply' mode: USB polling rate (125/250/500/1000). -1 skips.
+        USB polling rate (125/250/500/1000). -1 skips.
   -rgb-mode string
-        In 'apply' mode: RGB mode (off/on/breath/cycle6/cycle12/cycle768)
+        RGB mode (off/on/breath/cycle6/cycle12/cycle768)
   -cpi-action string
-        In 'apply' mode: CPI action value
+        CPI action value
   -json
         JSON output for 'read' mode
   -reg int
@@ -84,21 +79,11 @@ Options:
         Register value for 'write' mode (default -1)
 
 Arguments detail:
-  [dpi]
-    -slot <1-4>   : Target DPI slot
-    -val  <int>   : DPI speed (200 to 3200, step 200)
-    -color <0-15> : LED color index
-    -switch-slot  : Also activate this slot after write
-
-  [rgb]
-    -val <string> : off, on, breath, cycle6, cycle12, cycle768
-
-  [cpi]
-    -val <string> : backward, forward, ctrl, win, browser, double_click, sniper, rgb_switch, dpi_cycle,
-					play_pause, mute, next_track, prev_track, stop, vol_up, vol_down, win_d,
-					copy, paste, prev_page, next_page, my_computer, calculator, ctrl_w
-
   [apply]
+    -dpi <value>          : Apply to one slot selected by -slot. Format: DPI or DPI:Color
+    -slot <1-4>           : Slot for -dpi and -switch-slot
+    -color <0-15>         : Optional color for -dpi (if not in -dpi value)
+    -switch-slot          : Activate -slot after applying -dpi
     -dpi1..-dpi4 <value>  : DPI or DPI:Color for slots 1..4 (e.g. 800 or 800:3), empty/-1 = skip
     -color1..-color4 <int>: Color for slots 1..4 (0..15), -1 = keep current
     -active-slot <1-4>    : Slot to activate after applying
@@ -110,11 +95,10 @@ Arguments detail:
 Examples:
   %s -mode read
   %s -mode read -json
-  %s -mode dpi -slot 2 -val 1200 -color 5
-  %s -mode cpi -val vol_up
-  %s -mode rate -val 1000
+  %s -mode apply -dpi 800:1 -slot 1 -switch-slot
+  %s -mode apply -rgb-mode on -rate 1000 -cpi-action vol_up
   %s -mode apply -dpi1 800:3 -dpi2 1200:5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
-`, binName, binName, binName, binName, binName, binName, binName)
+`, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
 
@@ -149,6 +133,12 @@ Examples:
 		RegisterV:  *regValPtr,
 	}
 
+	switch cmd.Mode {
+	case "read", "apply", "dump", "write":
+	default:
+		return facade.Command{}, false, fmt.Errorf("unknown mode %q; use read, apply, dump, write", cmd.Mode)
+	}
+
 	dpiSpecs := [4]string{*dpi1Ptr, *dpi2Ptr, *dpi3Ptr, *dpi4Ptr}
 	for i := 0; i < len(dpiSpecs); i++ {
 		dpiValue, colorValue, hasValue, err := parseDPISpec(dpiSpecs[i])
@@ -168,51 +158,43 @@ Examples:
 		cmd.Color[i] = colorValue
 	}
 
-	switch cmd.Mode {
-	case "dpi":
-		if *dpiSlotPtr < 1 || *dpiSlotPtr > 4 {
-			return facade.Command{}, false, fmt.Errorf("invalid DPI slot %d; must be 1-4", *dpiSlotPtr)
+	if *dpiSlotPtr < 1 || *dpiSlotPtr > 4 {
+		return facade.Command{}, false, fmt.Errorf("invalid slot %d; must be 1-4", *dpiSlotPtr)
+	}
+
+	singleDPI, singleColor, hasSingleDPI, err := parseDPISpec(*dpiPtr)
+	if err != nil {
+		return facade.Command{}, false, fmt.Errorf("invalid dpi value %q: %w", *dpiPtr, err)
+	}
+
+	if hasSingleDPI || *colorIdxPtr >= 0 || *switchSlotPtr {
+		slotIndex := *dpiSlotPtr - 1
+		if hasSingleDPI {
+			if cmd.DPI[slotIndex] >= 0 && cmd.DPI[slotIndex] != singleDPI {
+				return facade.Command{}, false, fmt.Errorf("conflicting DPI for slot %d: -dpi gives %d but -dpi%d gives %d", *dpiSlotPtr, singleDPI, *dpiSlotPtr, cmd.DPI[slotIndex])
+			}
+			cmd.DPI[slotIndex] = singleDPI
+
+			if singleColor >= 0 {
+				if cmd.Color[slotIndex] >= 0 && cmd.Color[slotIndex] != singleColor {
+					return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: -dpi gives %d but color for this slot is %d", *dpiSlotPtr, singleColor, cmd.Color[slotIndex])
+				}
+				cmd.Color[slotIndex] = singleColor
+			}
 		}
-		if *valPtr == "" {
-			return facade.Command{}, false, errors.New("dpi mode requires -val")
+
+		if *colorIdxPtr >= 0 {
+			if cmd.Color[slotIndex] >= 0 && cmd.Color[slotIndex] != *colorIdxPtr {
+				return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: -color is %d but another source gives %d", *dpiSlotPtr, *colorIdxPtr, cmd.Color[slotIndex])
+			}
+			cmd.Color[slotIndex] = *colorIdxPtr
 		}
-		dpiValue, err := strconv.Atoi(*valPtr)
-		if err != nil {
-			return facade.Command{}, false, fmt.Errorf("invalid DPI value %q", *valPtr)
-		}
-		cmd.DPI[*dpiSlotPtr-1] = dpiValue
-		cmd.Color[*dpiSlotPtr-1] = *colorIdxPtr
+
 		if *switchSlotPtr {
+			if cmd.ActiveSlot >= 0 && cmd.ActiveSlot != *dpiSlotPtr {
+				return facade.Command{}, false, fmt.Errorf("conflicting active slot: -switch-slot uses %d but -active-slot is %d", *dpiSlotPtr, cmd.ActiveSlot)
+			}
 			cmd.ActiveSlot = *dpiSlotPtr
-		}
-	case "switch":
-		if cmd.ActiveSlot < 0 {
-			cmd.ActiveSlot = *dpiSlotPtr
-		}
-	case "rgb":
-		if *valPtr != "" {
-			if cmd.RGBMode != "" && cmd.RGBMode != *valPtr {
-				return facade.Command{}, false, errors.New("rgb mode is ambiguous; use either -val or -rgb-mode")
-			}
-			cmd.RGBMode = *valPtr
-		}
-	case "rate":
-		if *valPtr != "" {
-			rateValue, err := strconv.Atoi(*valPtr)
-			if err != nil {
-				return facade.Command{}, false, fmt.Errorf("invalid rate value %q", *valPtr)
-			}
-			if cmd.RateHz >= 0 && cmd.RateHz != rateValue {
-				return facade.Command{}, false, errors.New("rate is ambiguous; use either -val or -rate")
-			}
-			cmd.RateHz = rateValue
-		}
-	case "cpi":
-		if *valPtr != "" {
-			if cmd.CPIAction != "" && cmd.CPIAction != *valPtr {
-				return facade.Command{}, false, errors.New("cpi action is ambiguous; use either -val or -cpi-action")
-			}
-			cmd.CPIAction = *valPtr
 		}
 	}
 

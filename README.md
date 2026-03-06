@@ -41,81 +41,52 @@ The binary will be available at `build/rtt3168ctl`.
 ## Modes (`-mode`)
 
 - `read` - read current configuration
-- `dpi` - change slot DPI/color
-- `switch` - switch active DPI slot
-- `rgb` - configure lighting mode
-- `rate` - set USB polling rate (125/250/500/1000)
-- `cpi` - set CPI button action
-- `apply` - apply multiple settings in one command (cron-friendly)
+- `apply` - apply one or more settings
 - `dump` - dump bank 1 registers (1..30)
 - `write` - raw register write (advanced)
 
 ## Main Parameters
 
-- `-slot` - DPI slot (`1-4`)
-- `-val` - mode value
-- `-color` - color index (`0-15`), `-1` = keep current
-- `-switch-slot` - for `-mode dpi` also activate target slot after write
+- `-slot` - slot used by `-dpi` and `-switch-slot` (`1-4`)
+- `-dpi` - single-slot DPI value as `DPI` or `DPI:color` (e.g. `800` or `800:1`)
+- `-color` - with `-dpi`: color index (`0-15`), `-1` = keep current
+- `-switch-slot` - with `-dpi/-slot`: activate this slot after write
+- `-dpi1..-dpi4` - slot value as `DPI` or `DPI:color` (e.g. `800` or `800:3`)
+- `-color1..-color4` - color for each slot (`0..15`), `-1` = keep current
+- `-active-slot` - activate slot (`1-4`) after applying settings
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
 - `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
-- `-dpi1..-dpi4` - in `-mode apply`: slot value as `DPI` or `DPI:color` (e.g. `800` or `800:3`)
-- `-color1..-color4` - in `-mode apply`: color for each slot (`0..15`), `-1` = keep current
-- `-active-slot` - in `-mode apply`: activate slot (`1-4`) after applying settings
-- `-rate` - in `-mode apply`: polling rate (`125/250/500/1000`)
-- `-rgb-mode` - in `-mode apply`: RGB mode value
-- `-cpi-action` - in `-mode apply`: CPI action value
+- `-rate` - polling rate (`125/250/500/1000`)
+- `-rgb-mode` - RGB mode value
+- `-cpi-action` - CPI action value
 
-## Mode Values
+### `-mode read`
+Read current device settings.
 
-### `-mode dpi`
-- `-val`: DPI in range `200..3200`, step `200`
-- `-slot`: `1..4`
-- `-color`: `0..15` (optional)
-- `-switch-slot`: optional, activates target slot after updating DPI/color
-
-Example:
+Human-readable output:
 ```bash
-./build/rtt3168ctl -mode dpi -slot 1 -val 800 -color 3
+./build/rtt3168ctl -mode read
 ```
 
-Switch active slot while writing:
+JSON output:
 ```bash
-./build/rtt3168ctl -mode dpi -slot 2 -val 1600 -color 0 -switch-slot
-```
-
-### `-mode rgb`
-Supported `-val` values:
-- `off`
-- `on`
-- `breath`
-- `cycle6`
-- `cycle12`
-- `cycle768`
-
-Example:
-```bash
-./build/rtt3168ctl -mode rgb -val breath -speed 40
-```
-
-### `-mode cpi`
-Supported actions (`-val`):
-- `backward`, `forward`, `ctrl`, `win`, `browser`, `double_click`, `sniper`, `rgb_switch`, `dpi_cycle`
-- `play_pause`, `mute`, `next_track`, `prev_track`, `stop`, `vol_up`, `vol_down`, `win_d`
-- `copy`, `paste`, `prev_page`, `next_page`, `my_computer`, `calculator`, `ctrl_w`
-
-Example:
-```bash
-./build/rtt3168ctl -mode cpi -val vol_up
+./build/rtt3168ctl -mode read -json
 ```
 
 ### `-mode apply`
 Apply several settings in one run, for example from cron/startup scripts:
 
+Single-slot shortcut:
+```bash
+./build/rtt3168ctl -mode apply -dpi 800:1 -slot 1 -switch-slot
+```
+
+Full profile:
 ```bash
 ./build/rtt3168ctl -mode apply \
   -dpi1 800:3 \
-  -dpi2 1200:5 \
+  -dpi2 1600:0 \
   -dpi3 1600:7 \
   -dpi4 2000:9 \
   -active-slot 2 \
@@ -125,6 +96,20 @@ Apply several settings in one run, for example from cron/startup scripts:
 ```
 
 You can still use `-color1..-color4` separately; if both are set, values must match.
+
+### `-mode dump`
+Dump raw register values from bank 1 (registers `1..30`):
+
+```bash
+./build/rtt3168ctl -mode dump
+```
+
+### `-mode write`
+Write a raw byte to a register (advanced diagnostics):
+
+```bash
+./build/rtt3168ctl -mode write -reg 14 -regval 2
+```
 
 ## VID/PID via Environment Variables
 
