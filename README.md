@@ -46,6 +46,7 @@ The binary will be available at `build/rtt3168ctl`.
 - `rgb` - configure lighting mode
 - `rate` - set USB polling rate (125/250/500/1000)
 - `cpi` - set CPI button action
+- `apply` - apply multiple settings in one command (cron-friendly)
 - `dump` - dump bank 1 registers (1..30)
 - `write` - raw register write (advanced)
 
@@ -58,6 +59,12 @@ The binary will be available at `build/rtt3168ctl`.
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
 - `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
+- `-dpi1..-dpi4` - in `-mode apply`: DPI for each slot (`200..3200`, step `200`)
+- `-color1..-color4` - in `-mode apply`: color for each slot (`0..15`), `-1` = keep current
+- `-active-slot` - in `-mode apply`: activate slot (`1-4`) after applying settings
+- `-rate` - in `-mode apply`: polling rate (`125/250/500/1000`)
+- `-rgb-mode` - in `-mode apply`: RGB mode value
+- `-cpi-action` - in `-mode apply`: CPI action value
 
 ## Mode Values
 
@@ -100,6 +107,21 @@ Supported actions (`-val`):
 Example:
 ```bash
 ./build/rtt3168ctl -mode cpi -val vol_up
+```
+
+### `-mode apply`
+Apply several settings in one run, for example from cron/startup scripts:
+
+```bash
+./build/rtt3168ctl -mode apply \
+  -dpi1 800 -color1 3 \
+  -dpi2 1200 -color2 5 \
+  -dpi3 1600 -color3 7 \
+  -dpi4 2000 -color4 9 \
+  -active-slot 2 \
+  -rate 1000 \
+  -rgb-mode breath -speed 40 \
+  -cpi-action vol_up
 ```
 
 ## VID/PID via Environment Variables

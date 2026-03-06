@@ -5,19 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 
 	"rtt3168ctl/internal/core/kernel"
 	"rtt3168ctl/internal/modules/mouse"
 )
 
 type Command struct {
-	Mode       string
-	Value      string
-	DPISlot    int
-	ColorIndex int
-	SwitchSlot bool
+	Mode  string
+	DPI   [4]int
+	Color [4]int
+
+	ActiveSlot int
+	RateHz     int
+	RGBMode    string
 	RGBSpeed   int
+	CPIAction  string
+
 	JSONOutput bool
 	Register   int
 	RegisterV  int
@@ -85,57 +88,154 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		fmt.Fprintf(out, "Written 0x%02X to Register %d\n", cmd.RegisterV, cmd.Register)
 		return nil
 	case "switch":
-		if err := svc.SwitchDPISlot(cmd.DPISlot); err != nil {
+		if err := svc.SwitchDPISlot(cmd.ActiveSlot); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "Activated DPI Slot %d\n", cmd.DPISlot)
+		fmt.Fprintf(out, "Activated DPI Slot %d\n", cmd.ActiveSlot)
 		return nil
 	case "rgb":
-		if err := svc.SetRGB(cmd.Value, cmd.RGBSpeed); err != nil {
+		if cmd.RGBMode == "" {
+			return errors.New("provide mode value for RGB")
+		}
+		if err := svc.SetRGB(cmd.RGBMode, cmd.RGBSpeed); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "RGB Mode set to %s\n", cmd.Value)
+		fmt.Fprintf(out, "RGB Mode set to %s\n", cmd.RGBMode)
 		return nil
 	case "rate":
-		rateHz, err := strconv.Atoi(cmd.Value)
-		if err != nil {
-			return fmt.Errorf("invalid rate value %q", cmd.Value)
+		if cmd.RateHz < 0 {
+			return errors.New("provide rate value")
 		}
-		if err := svc.SetRate(rateHz); err != nil {
+		if err := svc.SetRate(cmd.RateHz); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "Polling rate set to %dHz\n", rateHz)
+		fmt.Fprintf(out, "Polling rate set to %dHz\n", cmd.RateHz)
 		return nil
 	case "dpi":
-		dpi, err := strconv.Atoi(cmd.Value)
+		slot, dpi, err := singleDPISetting(cmd.DPI)
 		if err != nil {
-			return fmt.Errorf("invalid DPI value %q", cmd.Value)
+			return err
 		}
-		if err := svc.SetDPI(cmd.DPISlot, dpi, cmd.ColorIndex, cmd.SwitchSlot); err != nil {
+		color := cmd.Color[slot-1]
+		switchSlot := cmd.ActiveSlot == slot
+		if err := svc.SetDPI(slot, dpi, color, switchSlot); err != nil {
 			return err
 		}
 		switchText := ""
-		if cmd.SwitchSlot {
+		if switchSlot {
 			switchText = ", active slot switched"
 		}
-		if cmd.ColorIndex < 0 {
-			fmt.Fprintf(out, "DPI Slot %d set to %d (Color: unchanged%s)\n", cmd.DPISlot, dpi, switchText)
+		if color < 0 {
+			fmt.Fprintf(out, "DPI Slot %d set to %d (Color: unchanged%s)\n", slot, dpi, switchText)
 			return nil
 		}
-		fmt.Fprintf(out, "DPI Slot %d set to %d (Color: %d%s)\n", cmd.DPISlot, dpi, cmd.ColorIndex, switchText)
+		fmt.Fprintf(out, "DPI Slot %d set to %d (Color: %d%s)\n", slot, dpi, color, switchText)
 		return nil
 	case "cpi":
-		if cmd.Value == "" {
+		if cmd.CPIAction == "" {
 			return errors.New("provide action for CPI")
 		}
-		if err := svc.SetCPIAction(cmd.Value); err != nil {
+		if err := svc.SetCPIAction(cmd.CPIAction); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "CPI Button bound to: %s\n", cmd.Value)
+		fmt.Fprintf(out, "CPI Button bound to: %s\n", cmd.CPIAction)
 		return nil
+	case "apply":
+		return applyAllSettings(svc, cmd, out)
 	default:
 		return fmt.Errorf("unknown mode %q; use -h for help", cmd.Mode)
 	}
+}
+
+func singleDPISetting(dpi [4]int) (slot int, value int, err error) {
+	targetSlot := -1
+	targetDPI := -1
+
+	for i := 0; i < len(dpi); i++ {
+		if dpi[i] < 0 {
+			continue
+		}
+		if targetSlot != -1 {
+			return 0, 0, errors.New("dpi mode accepts only one target slot")
+		}
+		targetSlot = i + 1
+		targetDPI = dpi[i]
+	}
+
+	if targetSlot == -1 {
+		return 0, 0, errors.New("provide DPI value for one slot")
+	}
+
+	return targetSlot, targetDPI, nil
+}
+
+func applyAllSettings(svc *mouse.Service, cmd Command, out io.Writer) error {
+	applied := false
+
+	for slot := 1; slot <= 4; slot++ {
+		dpi := cmd.DPI[slot-1]
+		color := cmd.Color[slot-1]
+		if dpi < 0 && color < 0 {
+			continue
+		}
+		if dpi < 0 {
+			return fmt.Errorf("apply: dpi%d is required when color%d is set", slot, slot)
+		}
+		if err := svc.SetDPI(slot, dpi, color, false); err != nil {
+			return fmt.Errorf("apply slot %d: %w", slot, err)
+		}
+		applied = true
+		if color < 0 {
+			fmt.Fprintf(out, "DPI Slot %d set to %d (Color: unchanged)\n", slot, dpi)
+			continue
+		}
+		fmt.Fprintf(out, "DPI Slot %d set to %d (Color: %d)\n", slot, dpi, color)
+	}
+
+	if cmd.RGBMode != "" || cmd.RGBSpeed >= 0 {
+		if cmd.RGBMode == "" {
+			return errors.New("apply: rgb-mode is required when speed is set")
+		}
+		if err := svc.SetRGB(cmd.RGBMode, cmd.RGBSpeed); err != nil {
+			return fmt.Errorf("apply RGB: %w", err)
+		}
+		applied = true
+		if cmd.RGBSpeed >= 0 {
+			fmt.Fprintf(out, "RGB Mode set to %s (Speed: %d)\n", cmd.RGBMode, cmd.RGBSpeed)
+		} else {
+			fmt.Fprintf(out, "RGB Mode set to %s\n", cmd.RGBMode)
+		}
+	}
+
+	if cmd.RateHz >= 0 {
+		if err := svc.SetRate(cmd.RateHz); err != nil {
+			return fmt.Errorf("apply rate: %w", err)
+		}
+		applied = true
+		fmt.Fprintf(out, "Polling rate set to %dHz\n", cmd.RateHz)
+	}
+
+	if cmd.CPIAction != "" {
+		if err := svc.SetCPIAction(cmd.CPIAction); err != nil {
+			return fmt.Errorf("apply CPI: %w", err)
+		}
+		applied = true
+		fmt.Fprintf(out, "CPI Button bound to: %s\n", cmd.CPIAction)
+	}
+
+	if cmd.ActiveSlot >= 0 {
+		if err := svc.SwitchDPISlot(cmd.ActiveSlot); err != nil {
+			return fmt.Errorf("apply active slot: %w", err)
+		}
+		applied = true
+		fmt.Fprintf(out, "Activated DPI Slot %d\n", cmd.ActiveSlot)
+	}
+
+	if !applied {
+		return errors.New("apply: no settings provided")
+	}
+
+	return nil
 }
 
 func printStatus(out io.Writer, status mouse.Status) {

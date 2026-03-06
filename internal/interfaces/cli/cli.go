@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strconv"
 
 	"rtt3168ctl/internal/facade"
 )
@@ -19,6 +20,18 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	colorIdxPtr := fs.Int("color", -1, "Color index for DPI slot (0-15)")
 	switchSlotPtr := fs.Bool("switch-slot", false, "In 'dpi' mode, also activate target DPI slot")
 	rgbSpeedPtr := fs.Int("speed", -1, "RGB Animation Speed (0-255)")
+	dpi1Ptr := fs.Int("dpi1", -1, "In 'apply' mode: DPI for slot 1 (200..3200 step 200)")
+	dpi2Ptr := fs.Int("dpi2", -1, "In 'apply' mode: DPI for slot 2 (200..3200 step 200)")
+	dpi3Ptr := fs.Int("dpi3", -1, "In 'apply' mode: DPI for slot 3 (200..3200 step 200)")
+	dpi4Ptr := fs.Int("dpi4", -1, "In 'apply' mode: DPI for slot 4 (200..3200 step 200)")
+	color1Ptr := fs.Int("color1", -1, "In 'apply' mode: Color index for slot 1 (0-15)")
+	color2Ptr := fs.Int("color2", -1, "In 'apply' mode: Color index for slot 2 (0-15)")
+	color3Ptr := fs.Int("color3", -1, "In 'apply' mode: Color index for slot 3 (0-15)")
+	color4Ptr := fs.Int("color4", -1, "In 'apply' mode: Color index for slot 4 (0-15)")
+	activeSlotPtr := fs.Int("active-slot", -1, "In 'apply' mode: activate DPI slot (1-4)")
+	ratePtr := fs.Int("rate", -1, "In 'apply' mode: USB polling rate (125/250/500/1000)")
+	rgbModePtr := fs.String("rgb-mode", "", "In 'apply' mode: RGB mode (off/on/breath/cycle6/cycle12/cycle768)")
+	cpiActionPtr := fs.String("cpi-action", "", "In 'apply' mode: CPI button action")
 	jsonPtr := fs.Bool("json", false, "JSON output for 'read' mode")
 	regPtr := fs.Int("reg", -1, "Raw register address")
 	regValPtr := fs.Int("regval", -1, "Raw register value")
@@ -33,6 +46,7 @@ Commands:
   rgb       Configure RGB lighting mode and animation speed
   rate      Set USB polling rate (Hz)
   cpi       Bind a hardware action to the CPI button (Button 6)
+  apply     Apply multiple settings in one run (good for cron/startup)
   dump      Print raw hex dump of Bank 1 memory
   write     Write a raw byte to a memory register (Advanced)
 
@@ -49,6 +63,18 @@ Options:
         In 'dpi' mode, also activate target DPI slot
   -speed int
         RGB Animation Speed (0-255). -1 keeps current. (default -1)
+  -dpi1..-dpi4 int
+        In 'apply' mode: DPI per slot (200..3200, step 200). -1 skips slot.
+  -color1..-color4 int
+        In 'apply' mode: color index per slot (0-15). -1 keeps current.
+  -active-slot int
+        In 'apply' mode: slot to activate (1-4). -1 skips.
+  -rate int
+        In 'apply' mode: USB polling rate (125/250/500/1000). -1 skips.
+  -rgb-mode string
+        In 'apply' mode: RGB mode (off/on/breath/cycle6/cycle12/cycle768)
+  -cpi-action string
+        In 'apply' mode: CPI action value
   -json
         JSON output for 'read' mode
   -reg int
@@ -71,13 +97,23 @@ Arguments detail:
 					play_pause, mute, next_track, prev_track, stop, vol_up, vol_down, win_d,
 					copy, paste, prev_page, next_page, my_computer, calculator, ctrl_w
 
+  [apply]
+    -dpi1..-dpi4 <int>    : DPI for slots 1..4 (200..3200, step 200), -1 = skip
+    -color1..-color4 <int>: Color for slots 1..4 (0..15), -1 = keep current
+    -active-slot <1-4>    : Slot to activate after applying
+    -rate <int>           : Polling rate (125/250/500/1000)
+    -rgb-mode <string>    : off, on, breath, cycle6, cycle12, cycle768
+    -speed <0-255>        : RGB speed (requires -rgb-mode)
+    -cpi-action <string>  : Same action values as in [cpi]
+
 Examples:
   %s -mode read
   %s -mode read -json
   %s -mode dpi -slot 2 -val 1200 -color 5
   %s -mode cpi -val vol_up
   %s -mode rate -val 1000
-`, binName, binName, binName, binName, binName, binName)
+  %s -mode apply -dpi1 800 -color1 3 -dpi2 1200 -color2 5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
+`, binName, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
 
@@ -93,15 +129,77 @@ Examples:
 		return facade.Command{}, true, nil
 	}
 
-	return facade.Command{
-		Mode:       *modePtr,
-		Value:      *valPtr,
-		DPISlot:    *dpiSlotPtr,
-		ColorIndex: *colorIdxPtr,
-		SwitchSlot: *switchSlotPtr,
+	cmd := facade.Command{
+		Mode: *modePtr,
+		DPI: [4]int{
+			*dpi1Ptr,
+			*dpi2Ptr,
+			*dpi3Ptr,
+			*dpi4Ptr,
+		},
+		Color: [4]int{
+			*color1Ptr,
+			*color2Ptr,
+			*color3Ptr,
+			*color4Ptr,
+		},
+		ActiveSlot: *activeSlotPtr,
+		RateHz:     *ratePtr,
+		RGBMode:    *rgbModePtr,
 		RGBSpeed:   *rgbSpeedPtr,
+		CPIAction:  *cpiActionPtr,
 		JSONOutput: *jsonPtr,
 		Register:   *regPtr,
 		RegisterV:  *regValPtr,
-	}, false, nil
+	}
+
+	switch cmd.Mode {
+	case "dpi":
+		if *dpiSlotPtr < 1 || *dpiSlotPtr > 4 {
+			return facade.Command{}, false, fmt.Errorf("invalid DPI slot %d; must be 1-4", *dpiSlotPtr)
+		}
+		if *valPtr == "" {
+			return facade.Command{}, false, errors.New("dpi mode requires -val")
+		}
+		dpiValue, err := strconv.Atoi(*valPtr)
+		if err != nil {
+			return facade.Command{}, false, fmt.Errorf("invalid DPI value %q", *valPtr)
+		}
+		cmd.DPI[*dpiSlotPtr-1] = dpiValue
+		cmd.Color[*dpiSlotPtr-1] = *colorIdxPtr
+		if *switchSlotPtr {
+			cmd.ActiveSlot = *dpiSlotPtr
+		}
+	case "switch":
+		if cmd.ActiveSlot < 0 {
+			cmd.ActiveSlot = *dpiSlotPtr
+		}
+	case "rgb":
+		if *valPtr != "" {
+			if cmd.RGBMode != "" && cmd.RGBMode != *valPtr {
+				return facade.Command{}, false, errors.New("rgb mode is ambiguous; use either -val or -rgb-mode")
+			}
+			cmd.RGBMode = *valPtr
+		}
+	case "rate":
+		if *valPtr != "" {
+			rateValue, err := strconv.Atoi(*valPtr)
+			if err != nil {
+				return facade.Command{}, false, fmt.Errorf("invalid rate value %q", *valPtr)
+			}
+			if cmd.RateHz >= 0 && cmd.RateHz != rateValue {
+				return facade.Command{}, false, errors.New("rate is ambiguous; use either -val or -rate")
+			}
+			cmd.RateHz = rateValue
+		}
+	case "cpi":
+		if *valPtr != "" {
+			if cmd.CPIAction != "" && cmd.CPIAction != *valPtr {
+				return facade.Command{}, false, errors.New("cpi action is ambiguous; use either -val or -cpi-action")
+			}
+			cmd.CPIAction = *valPtr
+		}
+	}
+
+	return cmd, false, nil
 }
