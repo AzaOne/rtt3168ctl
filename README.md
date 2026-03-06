@@ -13,8 +13,8 @@ Supported features:
 
 ## Requirements
 
-- Go 1.24+
-- Linux/macOS
+- Go 1.25+
+- Linux
 - USB device access (root permissions or udev rules may be required)
 
 `rtt3168ctl` uses `gousb`, which depends on `libusb-1.0`.
@@ -113,13 +113,6 @@ Override example:
 ```bash
 MOUSE_VID=0x093A MOUSE_PID=0x2533 ./build/rtt3168ctl -mode read
 ```
-
-Machine-readable output example:
-
-```bash
-./build/rtt3168ctl -mode read -json
-```
-
 ## Useful Make Commands
 
 ```bash
@@ -131,11 +124,6 @@ make fmt
 make vet
 make clean
 ```
-
-## GitHub Actions: Build and Releases
-
-- `CI` workflow (`.github/workflows/ci.yml`) runs tests/builds on push and pull requests.
-- `Release` workflow (`.github/workflows/release.yml`) publishes release assets when a tag `v*` is pushed.
 
 ## Note
 
