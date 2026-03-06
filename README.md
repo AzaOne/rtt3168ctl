@@ -59,7 +59,7 @@ The binary will be available at `build/rtt3168ctl`.
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
 - `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
-- `-dpi1..-dpi4` - in `-mode apply`: DPI for each slot (`200..3200`, step `200`)
+- `-dpi1..-dpi4` - in `-mode apply`: slot value as `DPI` or `DPI:color` (e.g. `800` or `800:3`)
 - `-color1..-color4` - in `-mode apply`: color for each slot (`0..15`), `-1` = keep current
 - `-active-slot` - in `-mode apply`: activate slot (`1-4`) after applying settings
 - `-rate` - in `-mode apply`: polling rate (`125/250/500/1000`)
@@ -114,15 +114,17 @@ Apply several settings in one run, for example from cron/startup scripts:
 
 ```bash
 ./build/rtt3168ctl -mode apply \
-  -dpi1 800 -color1 3 \
-  -dpi2 1200 -color2 5 \
-  -dpi3 1600 -color3 7 \
-  -dpi4 2000 -color4 9 \
+  -dpi1 800:3 \
+  -dpi2 1200:5 \
+  -dpi3 1600:7 \
+  -dpi4 2000:9 \
   -active-slot 2 \
   -rate 1000 \
   -rgb-mode breath -speed 40 \
   -cpi-action vol_up
 ```
+
+You can still use `-color1..-color4` separately; if both are set, values must match.
 
 ## VID/PID via Environment Variables
 

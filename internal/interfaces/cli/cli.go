@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"rtt3168ctl/internal/facade"
 )
@@ -20,10 +21,10 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	colorIdxPtr := fs.Int("color", -1, "Color index for DPI slot (0-15)")
 	switchSlotPtr := fs.Bool("switch-slot", false, "In 'dpi' mode, also activate target DPI slot")
 	rgbSpeedPtr := fs.Int("speed", -1, "RGB Animation Speed (0-255)")
-	dpi1Ptr := fs.Int("dpi1", -1, "In 'apply' mode: DPI for slot 1 (200..3200 step 200)")
-	dpi2Ptr := fs.Int("dpi2", -1, "In 'apply' mode: DPI for slot 2 (200..3200 step 200)")
-	dpi3Ptr := fs.Int("dpi3", -1, "In 'apply' mode: DPI for slot 3 (200..3200 step 200)")
-	dpi4Ptr := fs.Int("dpi4", -1, "In 'apply' mode: DPI for slot 4 (200..3200 step 200)")
+	dpi1Ptr := fs.String("dpi1", "", "In 'apply' mode: slot 1 value as DPI or DPI:Color (e.g. 800 or 800:3)")
+	dpi2Ptr := fs.String("dpi2", "", "In 'apply' mode: slot 2 value as DPI or DPI:Color (e.g. 1200 or 1200:5)")
+	dpi3Ptr := fs.String("dpi3", "", "In 'apply' mode: slot 3 value as DPI or DPI:Color (e.g. 1600 or 1600:7)")
+	dpi4Ptr := fs.String("dpi4", "", "In 'apply' mode: slot 4 value as DPI or DPI:Color (e.g. 2000 or 2000:9)")
 	color1Ptr := fs.Int("color1", -1, "In 'apply' mode: Color index for slot 1 (0-15)")
 	color2Ptr := fs.Int("color2", -1, "In 'apply' mode: Color index for slot 2 (0-15)")
 	color3Ptr := fs.Int("color3", -1, "In 'apply' mode: Color index for slot 3 (0-15)")
@@ -63,8 +64,8 @@ Options:
         In 'dpi' mode, also activate target DPI slot
   -speed int
         RGB Animation Speed (0-255). -1 keeps current. (default -1)
-  -dpi1..-dpi4 int
-        In 'apply' mode: DPI per slot (200..3200, step 200). -1 skips slot.
+  -dpi1..-dpi4 string
+        In 'apply' mode: slot value as DPI or DPI:Color (e.g. 800 or 800:3). Empty/-1 skips.
   -color1..-color4 int
         In 'apply' mode: color index per slot (0-15). -1 keeps current.
   -active-slot int
@@ -98,7 +99,7 @@ Arguments detail:
 					copy, paste, prev_page, next_page, my_computer, calculator, ctrl_w
 
   [apply]
-    -dpi1..-dpi4 <int>    : DPI for slots 1..4 (200..3200, step 200), -1 = skip
+    -dpi1..-dpi4 <value>  : DPI or DPI:Color for slots 1..4 (e.g. 800 or 800:3), empty/-1 = skip
     -color1..-color4 <int>: Color for slots 1..4 (0..15), -1 = keep current
     -active-slot <1-4>    : Slot to activate after applying
     -rate <int>           : Polling rate (125/250/500/1000)
@@ -112,7 +113,7 @@ Examples:
   %s -mode dpi -slot 2 -val 1200 -color 5
   %s -mode cpi -val vol_up
   %s -mode rate -val 1000
-  %s -mode apply -dpi1 800 -color1 3 -dpi2 1200 -color2 5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
+  %s -mode apply -dpi1 800:3 -dpi2 1200:5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
 `, binName, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
@@ -131,12 +132,7 @@ Examples:
 
 	cmd := facade.Command{
 		Mode: *modePtr,
-		DPI: [4]int{
-			*dpi1Ptr,
-			*dpi2Ptr,
-			*dpi3Ptr,
-			*dpi4Ptr,
-		},
+		DPI:  [4]int{-1, -1, -1, -1},
 		Color: [4]int{
 			*color1Ptr,
 			*color2Ptr,
@@ -151,6 +147,25 @@ Examples:
 		JSONOutput: *jsonPtr,
 		Register:   *regPtr,
 		RegisterV:  *regValPtr,
+	}
+
+	dpiSpecs := [4]string{*dpi1Ptr, *dpi2Ptr, *dpi3Ptr, *dpi4Ptr}
+	for i := 0; i < len(dpiSpecs); i++ {
+		dpiValue, colorValue, hasValue, err := parseDPISpec(dpiSpecs[i])
+		if err != nil {
+			return facade.Command{}, false, fmt.Errorf("invalid dpi%d value %q: %w", i+1, dpiSpecs[i], err)
+		}
+		if !hasValue {
+			continue
+		}
+		cmd.DPI[i] = dpiValue
+		if colorValue < 0 {
+			continue
+		}
+		if cmd.Color[i] >= 0 && cmd.Color[i] != colorValue {
+			return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: dpi%d uses %d but color%d is %d", i+1, i+1, colorValue, i+1, cmd.Color[i])
+		}
+		cmd.Color[i] = colorValue
 	}
 
 	switch cmd.Mode {
@@ -202,4 +217,34 @@ Examples:
 	}
 
 	return cmd, false, nil
+}
+
+func parseDPISpec(spec string) (dpi int, color int, hasValue bool, err error) {
+	normalized := strings.TrimSpace(spec)
+	if normalized == "" || normalized == "-1" {
+		return -1, -1, false, nil
+	}
+
+	parts := strings.Split(normalized, ":")
+	if len(parts) > 2 {
+		return 0, 0, false, errors.New("expected format <dpi> or <dpi>:<color>")
+	}
+
+	dpiValue, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false, errors.New("invalid dpi")
+	}
+
+	colorValue := -1
+	if len(parts) == 2 {
+		if parts[1] == "" {
+			return 0, 0, false, errors.New("color is empty")
+		}
+		colorValue, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return 0, 0, false, errors.New("invalid color")
+		}
+	}
+
+	return dpiValue, colorValue, true, nil
 }
