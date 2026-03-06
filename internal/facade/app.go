@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"rtt3168ctl/internal/core/kernel"
 	"rtt3168ctl/internal/modules/mouse"
@@ -52,8 +53,32 @@ func (a *App) Execute(cmd Command, out io.Writer) error {
 		if endErr != nil {
 			endErr = fmt.Errorf("end session: %w", endErr)
 		}
+
+		if shouldSuppressEndSessionError(cmd, workErr, endErr) {
+			fmt.Fprintf(out, "Warning: %v\n", endErr)
+			endErr = nil
+		}
+
 		return errors.Join(workErr, endErr)
 	})
+}
+
+func shouldSuppressEndSessionError(cmd Command, workErr, endErr error) bool {
+	if endErr == nil || workErr != nil {
+		return false
+	}
+	if cmd.Mode != "apply" || cmd.RateHz < 0 {
+		return false
+	}
+	return isTransientUSBError(endErr)
+}
+
+func isTransientUSBError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "libusb: i/o error") || strings.Contains(msg, "libusb: pipe error")
 }
 
 func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
@@ -207,14 +232,6 @@ func applyAllSettings(svc *mouse.Service, cmd Command, out io.Writer) error {
 		}
 	}
 
-	if cmd.RateHz >= 0 {
-		if err := svc.SetRate(cmd.RateHz); err != nil {
-			return fmt.Errorf("apply rate: %w", err)
-		}
-		applied = true
-		fmt.Fprintf(out, "Polling rate set to %dHz\n", cmd.RateHz)
-	}
-
 	if cmd.CPIAction != "" {
 		if err := svc.SetCPIAction(cmd.CPIAction); err != nil {
 			return fmt.Errorf("apply CPI: %w", err)
@@ -229,6 +246,14 @@ func applyAllSettings(svc *mouse.Service, cmd Command, out io.Writer) error {
 		}
 		applied = true
 		fmt.Fprintf(out, "Activated DPI Slot %d\n", cmd.ActiveSlot)
+	}
+
+	if cmd.RateHz >= 0 {
+		if err := svc.SetRate(cmd.RateHz); err != nil {
+			return fmt.Errorf("apply rate: %w", err)
+		}
+		applied = true
+		fmt.Fprintf(out, "Polling rate set to %dHz\n", cmd.RateHz)
 	}
 
 	if !applied {

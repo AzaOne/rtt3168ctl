@@ -3,6 +3,7 @@ package mouse
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 type SlotStatus struct {
@@ -200,7 +201,38 @@ func (s *Service) SetRate(rateHz int) error {
 	default:
 		return fmt.Errorf("invalid rate %d; use 125, 250, 500, or 1000", rateHz)
 	}
-	return s.repo.WriteRegister(RegRate, rate)
+
+	if rateHz != 1000 {
+		return s.repo.WriteRegister(RegRate, rate)
+	}
+
+	// Some devices briefly stall when switching to 1000Hz.
+	// Retry with small backoff and re-sync control before next attempt.
+	time.Sleep(60 * time.Millisecond)
+
+	var lastErr error
+	backoffs := []time.Duration{
+		50 * time.Millisecond,
+		100 * time.Millisecond,
+	}
+	for attempt := 0; ; attempt++ {
+		err := s.repo.WriteRegister(RegRate, rate)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+
+		if attempt >= len(backoffs) {
+			break
+		}
+
+		if syncErr := s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 383); syncErr != nil {
+			lastErr = errors.Join(lastErr, fmt.Errorf("resync before retry %d: %w", attempt+1, syncErr))
+		}
+		time.Sleep(backoffs[attempt])
+	}
+
+	return fmt.Errorf("set 1000Hz with retries: %w", lastErr)
 }
 
 func (s *Service) SetDPI(slot, dpi, colorIdx int, switchSlot bool) error {
