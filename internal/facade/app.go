@@ -190,14 +190,21 @@ func runExperimentalLoop(svc *mouse.Service, cmd Command, out io.Writer) error {
 				Sample:    sample,
 			})
 		}
+		b2i := func(b bool) int {
+			if b {
+				return 1
+			}
+			return 0
+		}
+
 		line := fmt.Sprintf(
-			"[%s] L=%t R=%t M=%t Back=%t Fwd=%t | dX=%d dY=%d | mask=0x%02X eff=0x%02X",
-			ts.Format(time.RFC3339Nano),
-			sample.Buttons.Left,
-			sample.Buttons.Right,
-			sample.Buttons.Middle,
-			sample.Buttons.SideBack,
-			sample.Buttons.SideForward,
+			"[%s] L:%d R:%d M:%d B:%d F:%d | dX:%4d dY:%4d | m:0x%02X e:0x%02X",
+			ts.Format("15:04:05.000"),
+			b2i(sample.Buttons.Left),
+			b2i(sample.Buttons.Right),
+			b2i(sample.Buttons.Middle),
+			b2i(sample.Buttons.SideBack),
+			b2i(sample.Buttons.SideForward),
 			sample.Motion.MoveX,
 			sample.Motion.MoveY,
 			sample.Buttons.Mask,
