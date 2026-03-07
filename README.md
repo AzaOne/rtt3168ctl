@@ -42,8 +42,9 @@ The binary will be available at `build/rtt3168ctl`.
 
 - `read` - read current configuration
 - `apply` - apply one or more settings
-- `dump` - dump bank 0 and bank 1 registers (0..255)
+- `dump` - dump raw registers from one or more banks (0..255 per bank)
 - `write` - raw register write (advanced)
+- `experimental` - stream inferred runtime/event registers in a loop (advanced)
 
 ## Main Parameters
 
@@ -57,9 +58,13 @@ The binary will be available at `build/rtt3168ctl`.
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
 - `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
+- `-dump-banks` - banks to read in `dump` mode (`0,1`, `0-7`, or `all`)
 - `-rate` - polling rate (`125/250/500/1000`)
 - `-rgb-mode` - RGB mode value
 - `-cpi-action` - CPI action value
+- `-exp-interval-ms` - poll interval for `experimental` mode (`>0`, default `20`)
+- `-exp-count` - number of printed samples in `experimental` mode (`0` = infinite)
+- `-exp-all` - print every sample in `experimental` mode (default: only changes)
 
 ### `-mode read`
 Read current device settings.
@@ -107,10 +112,17 @@ Supported `-rgb-mode` values:
 You can still use `-color1..-color4` separately; if both are set, values must match.
 
 ### `-mode dump`
-Dump raw register values from bank 0 and bank 1 (registers `0..255`):
+Dump raw register values from one or more banks (registers `0..255` for each bank).
+By default the tool reads banks `0` and `1`.
 
 ```bash
 ./build/rtt3168ctl -mode dump
+```
+
+Probe additional candidate banks:
+
+```bash
+./build/rtt3168ctl -mode dump -dump-banks 0-7
 ```
 
 ### `-mode write`
@@ -119,6 +131,73 @@ Write a raw byte to a register (advanced diagnostics):
 ```bash
 ./build/rtt3168ctl -mode write -reg 14 -regval 2
 ```
+
+### `-mode experimental`
+Read inferred runtime/event registers in a loop.
+By default it prints only changed samples, updates one console line in place,
+and runs until `Ctrl+C`.
+
+```bash
+./build/rtt3168ctl -mode experimental
+```
+
+JSON lines, fixed number of samples:
+
+```bash
+./build/rtt3168ctl -mode experimental -json -exp-all -exp-interval-ms 100 -exp-count 50
+```
+
+## Guided Unknown-Register Experiment
+
+Use this interactive script to investigate registers not documented in `SPEC.md`.
+It guides you through movement/click/scroll/button actions and reports only
+unknown-register changes relative to an idle baseline.
+
+```bash
+./scripts/unknown-register-experiment.sh
+```
+
+Optional parameters:
+
+```bash
+./scripts/unknown-register-experiment.sh \
+  --samples 10 \
+  --duration 8 \
+  --out ./experiments/session-01 \
+  --bin ./build/rtt3168ctl
+```
+
+To inspect candidate banks added via `-dump-banks`, use:
+
+```bash
+./scripts/bank-survey.sh --banks 0-15
+```
+
+The script captures several dumps and summarizes:
+- volatile registers;
+- stable non-trivial values (`!= 0x00` and `!= 0xFF`);
+- groups of banks with identical snapshots.
+
+To check which banks react to movement/buttons at runtime, use:
+
+```bash
+./scripts/bank-action-survey.sh --banks 0,1,2,7,128,133,147,255
+```
+
+It captures guided action steps and writes both:
+- per-step diffs vs baseline;
+- idle-filtered action-specific activity.
+
+To reduce `bank-action` output to a practical register shortlist, use:
+
+```bash
+./scripts/bank-action-shortlist.sh
+```
+
+It creates:
+- a per-bank shortlist;
+- a cross-bank core shortlist;
+- single-bank specialists (for example button-only bank views).
 
 ## Device IDs and udev Rules
 

@@ -5,7 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"rtt3168ctl/internal/core/kernel"
 	"rtt3168ctl/internal/modules/mouse"
@@ -25,6 +29,11 @@ type Command struct {
 	JSONOutput bool
 	Register   int
 	RegisterV  int
+	DumpBanks  []uint16
+
+	ExperimentalIntervalMS int
+	ExperimentalCount      int
+	ExperimentalAll        bool
 }
 
 type App struct {
@@ -99,22 +108,23 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		printStatus(out, status)
 		return nil
 	case "dump":
-		bank0Dump, err := svc.DumpBank0Registers(dumpRegStart, dumpRegEnd)
-		if err != nil {
-			return err
+		banks := cmd.DumpBanks
+		if len(banks) == 0 {
+			banks = []uint16{0, 1}
 		}
-		bank1Dump, err := svc.DumpBank1Registers(dumpRegStart, dumpRegEnd)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(out, "Memory Dump (Bank 0, registers 0..255)")
-		for _, item := range bank0Dump {
-			fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
-		}
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Memory Dump (Bank 1, registers 0..255)")
-		for _, item := range bank1Dump {
-			fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
+
+		for i, bank := range banks {
+			bankDump, err := svc.DumpBankRegisters(bank, dumpRegStart, dumpRegEnd)
+			if err != nil {
+				return fmt.Errorf("dump bank %d: %w", bank, err)
+			}
+			if i > 0 {
+				fmt.Fprintln(out)
+			}
+			fmt.Fprintf(out, "Memory Dump (Bank %d, registers 0..255)\n", bank)
+			for _, item := range bankDump {
+				fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
+			}
 		}
 		return nil
 	case "write":
@@ -128,8 +138,123 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		return nil
 	case "apply":
 		return applyAllSettings(svc, cmd, out)
+	case "experimental":
+		return runExperimentalLoop(svc, cmd, out)
 	default:
-		return fmt.Errorf("unknown mode %q; use read, apply, dump, write", cmd.Mode)
+		return fmt.Errorf("unknown mode %q; use read, apply, dump, write, experimental", cmd.Mode)
+	}
+}
+
+func runExperimentalLoop(svc *mouse.Service, cmd Command, out io.Writer) error {
+	intervalMS := cmd.ExperimentalIntervalMS
+	if intervalMS <= 0 {
+		intervalMS = 20
+	}
+	interval := time.Duration(intervalMS) * time.Millisecond
+
+	if cmd.ExperimentalCount < 0 {
+		return errors.New("experimental: count must be >= 0")
+	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
+	fmt.Fprintf(out, "Experimental loop started (interval=%s, count=%d, all=%t)\n", interval, cmd.ExperimentalCount, cmd.ExperimentalAll)
+	if cmd.ExperimentalCount == 0 {
+		fmt.Fprintln(out, "Press Ctrl+C to stop.")
+	}
+
+	type sampleJSON struct {
+		Timestamp string                   `json:"timestamp"`
+		Sample    mouse.ExperimentalStatus `json:"sample"`
+	}
+	enc := json.NewEncoder(out)
+	liveLine := !cmd.JSONOutput
+	lastLineLen := 0
+	wroteLiveLine := false
+
+	finishLiveLine := func() {
+		if !wroteLiveLine {
+			return
+		}
+		fmt.Fprintln(out)
+		wroteLiveLine = false
+	}
+
+	printSample := func(ts time.Time, sample mouse.ExperimentalStatus) error {
+		if cmd.JSONOutput {
+			return enc.Encode(sampleJSON{
+				Timestamp: ts.Format(time.RFC3339Nano),
+				Sample:    sample,
+			})
+		}
+		line := fmt.Sprintf(
+			"[%s] L=%t R=%t M=%t Back=%t Fwd=%t | dX=%d dY=%d | mask=0x%02X eff=0x%02X",
+			ts.Format(time.RFC3339Nano),
+			sample.Buttons.Left,
+			sample.Buttons.Right,
+			sample.Buttons.Middle,
+			sample.Buttons.SideBack,
+			sample.Buttons.SideForward,
+			sample.Motion.MoveX,
+			sample.Motion.MoveY,
+			sample.Buttons.Mask,
+			sample.Buttons.EffectiveMask,
+		)
+
+		if liveLine {
+			padding := ""
+			if len(line) < lastLineLen {
+				padding = strings.Repeat(" ", lastLineLen-len(line))
+			}
+			if _, err := fmt.Fprintf(out, "\r%s%s", line, padding); err != nil {
+				return err
+			}
+			lastLineLen = len(line)
+			wroteLiveLine = true
+			return nil
+		}
+
+		fmt.Fprintln(out, line)
+		return nil
+	}
+
+	var prev mouse.ExperimentalStatus
+	hasPrev := false
+	printed := 0
+
+	for {
+		now := time.Now()
+		sample, err := svc.ReadExperimentalStatus()
+		if err != nil {
+			finishLiveLine()
+			return fmt.Errorf("experimental read: %w", err)
+		}
+
+		shouldPrint := !hasPrev || cmd.ExperimentalAll || sample != prev
+		if shouldPrint {
+			if err := printSample(now, sample); err != nil {
+				finishLiveLine()
+				return fmt.Errorf("print experimental sample: %w", err)
+			}
+			printed++
+			prev = sample
+			hasPrev = true
+		}
+
+		if cmd.ExperimentalCount > 0 && printed >= cmd.ExperimentalCount {
+			finishLiveLine()
+			return nil
+		}
+
+		select {
+		case <-time.After(interval):
+		case <-sigCh:
+			finishLiveLine()
+			fmt.Fprintln(out, "Experimental loop stopped.")
+			return nil
+		}
 	}
 }
 
@@ -252,6 +377,7 @@ func printStatusJSON(out io.Writer, status mouse.Status) error {
 
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
+
 	return enc.Encode(jsonStatus{
 		SensorID:   status.SensorID,
 		ActiveSlot: status.ActiveSlot,

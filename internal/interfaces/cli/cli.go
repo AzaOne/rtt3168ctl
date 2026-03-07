@@ -36,6 +36,10 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	jsonPtr := fs.Bool("json", false, "JSON output for 'read' mode")
 	regPtr := fs.Int("reg", -1, "Raw register address")
 	regValPtr := fs.Int("regval", -1, "Raw register value")
+	dumpBanksPtr := fs.String("dump-banks", "0,1", "Banks for 'dump' mode: comma list, ranges, or 'all'")
+	expIntervalPtr := fs.Int("exp-interval-ms", 20, "Polling interval in ms for 'experimental' mode")
+	expCountPtr := fs.Int("exp-count", 0, "Number of printed samples for 'experimental' mode (0 = infinite)")
+	expAllPtr := fs.Bool("exp-all", false, "In 'experimental' mode print every sample, not only changes")
 
 	fs.Usage = func() {
 		helpText := fmt.Sprintf(`Usage: %s -mode <command> [options]
@@ -43,8 +47,9 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 Commands:
   read      Read current hardware configuration
   apply     Apply one or more settings
-  dump      Dump bank 0 and bank 1 registers (0..255)
+  dump      Dump raw registers from one or more banks (0..255 per bank)
   write     Write a raw byte to a memory register (Advanced)
+  experimental  Read inferred runtime/event registers in a loop (Advanced)
 
 Options:
   -mode string
@@ -77,6 +82,14 @@ Options:
         Register address for 'write' mode (default -1)
   -regval int
         Register value for 'write' mode (default -1)
+  -dump-banks string
+        Banks for 'dump' mode: comma list, ranges, or 'all' (default "0,1")
+  -exp-interval-ms int
+        Poll interval in ms for 'experimental' mode (default 20)
+  -exp-count int
+        Number of printed samples in 'experimental' mode (0 = infinite, default 0)
+  -exp-all
+        In 'experimental' mode, print every sample (default: print on change only)
 
 Arguments detail:
   [apply]
@@ -92,13 +105,25 @@ Arguments detail:
     -speed <0-255>        : RGB speed (requires -rgb-mode)
     -cpi-action <string>  : Same action values as in [cpi]
 
+  [experimental]
+    -exp-interval-ms <n>  : Poll interval in milliseconds (default 20)
+    -exp-count <n>        : Number of printed samples; 0 = run until Ctrl+C
+    -exp-all              : Print every sample (default: only changed samples)
+    -json                 : JSON lines output (timestamp + sample)
+
+  [dump]
+    -dump-banks <spec>    : Banks to read, e.g. 0,1 or 0-7 or all
+
 Examples:
   %s -mode read
   %s -mode read -json
   %s -mode apply -dpi 800:1 -slot 1 -switch-slot
   %s -mode apply -rgb-mode on -rate 1000 -cpi-action vol_up
   %s -mode apply -dpi1 800:3 -dpi2 1200:5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
-`, binName, binName, binName, binName, binName, binName)
+  %s -mode dump -dump-banks 0-7
+  %s -mode experimental -exp-interval-ms 100
+  %s -mode experimental -json -exp-all -exp-count 50
+`, binName, binName, binName, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
 
@@ -131,12 +156,33 @@ Examples:
 		JSONOutput: *jsonPtr,
 		Register:   *regPtr,
 		RegisterV:  *regValPtr,
+
+		ExperimentalIntervalMS: *expIntervalPtr,
+		ExperimentalCount:      *expCountPtr,
+		ExperimentalAll:        *expAllPtr,
 	}
 
 	switch cmd.Mode {
-	case "read", "apply", "dump", "write":
+	case "read", "apply", "dump", "write", "experimental":
 	default:
-		return facade.Command{}, false, fmt.Errorf("unknown mode %q; use read, apply, dump, write", cmd.Mode)
+		return facade.Command{}, false, fmt.Errorf("unknown mode %q; use read, apply, dump, write, experimental", cmd.Mode)
+	}
+
+	if cmd.Mode == "experimental" {
+		if cmd.ExperimentalIntervalMS <= 0 {
+			return facade.Command{}, false, errors.New("exp-interval-ms must be > 0")
+		}
+		if cmd.ExperimentalCount < 0 {
+			return facade.Command{}, false, errors.New("exp-count must be >= 0")
+		}
+	}
+
+	if cmd.Mode == "dump" {
+		banks, err := parseBankSpec(*dumpBanksPtr)
+		if err != nil {
+			return facade.Command{}, false, fmt.Errorf("invalid dump-banks value %q: %w", *dumpBanksPtr, err)
+		}
+		cmd.DumpBanks = banks
 	}
 
 	dpiSpecs := [4]string{*dpi1Ptr, *dpi2Ptr, *dpi3Ptr, *dpi4Ptr}
@@ -229,4 +275,90 @@ func parseDPISpec(spec string) (dpi int, color int, hasValue bool, err error) {
 	}
 
 	return dpiValue, colorValue, true, nil
+}
+
+func parseBankSpec(spec string) ([]uint16, error) {
+	normalized := strings.TrimSpace(spec)
+	if normalized == "" {
+		return nil, errors.New("value is empty")
+	}
+
+	if strings.EqualFold(normalized, "all") {
+		out := make([]uint16, 0, 256)
+		for bank := uint16(0); bank <= 255; bank++ {
+			out = append(out, bank)
+		}
+		return out, nil
+	}
+
+	seen := make(map[uint16]struct{})
+	out := make([]uint16, 0)
+	parts := strings.Split(normalized, ",")
+	for _, part := range parts {
+		token := strings.TrimSpace(part)
+		if token == "" {
+			return nil, errors.New("empty bank token")
+		}
+
+		if strings.Contains(token, "-") {
+			bounds := strings.Split(token, "-")
+			if len(bounds) != 2 {
+				return nil, fmt.Errorf("invalid range %q", token)
+			}
+
+			start, err := parseBankID(bounds[0])
+			if err != nil {
+				return nil, fmt.Errorf("invalid range start %q: %w", bounds[0], err)
+			}
+			end, err := parseBankID(bounds[1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid range end %q: %w", bounds[1], err)
+			}
+			if end < start {
+				return nil, fmt.Errorf("invalid descending range %q", token)
+			}
+
+			for bank := start; bank <= end; bank++ {
+				if _, ok := seen[bank]; ok {
+					continue
+				}
+				seen[bank] = struct{}{}
+				out = append(out, bank)
+			}
+			continue
+		}
+
+		bank, err := parseBankID(token)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := seen[bank]; ok {
+			continue
+		}
+		seen[bank] = struct{}{}
+		out = append(out, bank)
+	}
+
+	if len(out) == 0 {
+		return nil, errors.New("no banks selected")
+	}
+
+	return out, nil
+}
+
+func parseBankID(raw string) (uint16, error) {
+	normalized := strings.TrimSpace(raw)
+	if normalized == "" {
+		return 0, errors.New("value is empty")
+	}
+
+	value, err := strconv.Atoi(normalized)
+	if err != nil {
+		return 0, errors.New("not an integer")
+	}
+	if value < 0 || value > 255 {
+		return 0, errors.New("must be in range 0..255")
+	}
+
+	return uint16(value), nil
 }
