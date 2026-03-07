@@ -42,7 +42,7 @@ The binary will be available at `build/rtt3168ctl`.
 
 - `read` - read current configuration
 - `apply` - apply one or more settings
-- `dump` - dump raw registers from one or more banks (0..255 per bank)
+- `dump` - dump raw unique registers from one or more banks (0..127 per bank; `+0x80` is mirrored)
 - `write` - raw register write (advanced)
 - `experimental` - stream inferred runtime/event registers in a loop (advanced)
 
@@ -112,7 +112,7 @@ Supported `-rgb-mode` values:
 You can still use `-color1..-color4` separately; if both are set, values must match.
 
 ### `-mode dump`
-Dump raw register values from one or more banks (registers `0..255` for each bank).
+Dump raw register values from one or more banks (unique registers `0..127` for each bank).
 By default the tool reads banks `0` and `1`.
 
 ```bash

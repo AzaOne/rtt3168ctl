@@ -57,7 +57,7 @@ Options:
 What this script does:
   1. Captures a baseline dump and baseline readout.
   2. Applies controlled configuration changes with `-mode apply`.
-  3. Captures a full dump after each change.
+  3. Captures a unique-register dump after each change.
   4. Reports diffs against baseline, with focus on unknown registers.
   5. Restores the original bank1 configuration between scenarios and on exit.
 
@@ -250,8 +250,8 @@ parse_dump() {
 	local raw_file="$1"
 	local parsed_file="$2"
 	awk '
-		/^Memory Dump \(Bank 0, registers 0\.\.255\)$/ { bank=0; next }
-		/^Memory Dump \(Bank 1, registers 0\.\.255\)$/ { bank=1; next }
+		/^Memory Dump \(Bank 0, registers 0\.\.(127|255)\)$/ { bank=0; next }
+		/^Memory Dump \(Bank 1, registers 0\.\.(127|255)\)$/ { bank=1; next }
 		match($0, /^([0-9]+) \(0x[0-9A-F]{2}\): 0x([0-9A-F]{2})$/, m) {
 			printf "%d\t%d\t%s\n", bank, m[1] + 0, m[2]
 		}

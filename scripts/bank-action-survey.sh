@@ -115,7 +115,7 @@ parse_dump() {
 	local raw_file="$1"
 	local parsed_file="$2"
 	awk '
-		match($0, /^Memory Dump \(Bank ([0-9]+), registers 0\.\.255\)$/, m) {
+		match($0, /^Memory Dump \(Bank ([0-9]+), registers 0\.\.(127|255)\)$/, m) {
 			bank = m[1] + 0
 			next
 		}

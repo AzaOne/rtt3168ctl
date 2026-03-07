@@ -47,7 +47,7 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 Commands:
   read      Read current hardware configuration
   apply     Apply one or more settings
-  dump      Dump raw registers from one or more banks (0..255 per bank)
+  dump      Dump raw unique registers from one or more banks (0..127 per bank)
   write     Write a raw byte to a memory register (Advanced)
   experimental  Read inferred runtime/event registers in a loop (Advanced)
 

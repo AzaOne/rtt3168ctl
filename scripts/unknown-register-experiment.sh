@@ -110,8 +110,8 @@ parse_dump() {
 	local raw_file="$1"
 	local parsed_file="$2"
 	awk '
-		/^Memory Dump \(Bank 0, registers 0\.\.255\)$/ { bank=0; next }
-		/^Memory Dump \(Bank 1, registers 0\.\.255\)$/ { bank=1; next }
+		/^Memory Dump \(Bank 0, registers 0\.\.(127|255)\)$/ { bank=0; next }
+		/^Memory Dump \(Bank 1, registers 0\.\.(127|255)\)$/ { bank=1; next }
 		match($0, /^([0-9]+) \(0x[0-9A-F]{2}\): 0x([0-9A-F]{2})$/, m) {
 			printf "%d\t%d\t%s\n", bank, m[1] + 0, m[2]
 		}

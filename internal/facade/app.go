@@ -42,7 +42,8 @@ type App struct {
 
 const (
 	dumpRegStart uint16 = 0
-	dumpRegEnd   uint16 = 255
+	// Upper half (+0x80) is a hardware mirror, so dump only unique registers.
+	dumpRegEnd uint16 = 127
 )
 
 func New(k *kernel.Kernel) *App {
@@ -121,7 +122,7 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 			if i > 0 {
 				fmt.Fprintln(out)
 			}
-			fmt.Fprintf(out, "Memory Dump (Bank %d, registers 0..255)\n", bank)
+			fmt.Fprintf(out, "Memory Dump (Bank %d, registers 0..127)\n", bank)
 			for _, item := range bankDump {
 				fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
 			}

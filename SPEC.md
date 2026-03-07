@@ -45,23 +45,6 @@ This document describes the RTT3168CG2 mouse control protocol used by `rtt3168ct
 
 All operations above use `OUT + bRequest=0x01 + wValue=0x0100`.
 
-Observed/inferred bank-select pattern:
-
-- Candidate `BankN` can be probed with `wIndex = (N << 8) | 0x007F`
-- Confirmed examples: `N=0 -> 0x007F`, `N=1 -> 0x017F`
-- Only `Bank1` is currently known to require the extra `0x2009` I/O sync
-- In surveyed banks `0..255`, `reg 0x7F` and `reg 0xFF` read back the bank id itself
-  (`BankN: reg 0x7F = reg 0xFF = N`)
-
-Observed bank roles from dump/action surveys:
-
-- `Bank1` behaves as a separate compact config/button-event bank.
-- `Bank0` behaves as the primary runtime/event bank.
-- Surveyed banks `2, 7, 128, 133, 147, 255` behave as additional **Bank0-like runtime
-  windows**, not as empty/unused banks.
-- `Bank2+` are not byte-identical to `Bank0`, but they react to motion/button activity
-  through largely the same register families.
-
 ## 4. Session Lifecycle
 
 ### 4.1 BeginSession
@@ -100,6 +83,26 @@ Observed bank roles from dump/action surveys:
 - Conversion:
   - `dpi = 200 + dpi_idx*200`
   - Tool-enforced range: `200..3200`, step `200`
+- Inferred color lookup:
+  - `color_idx = 0..15` appears to select a 3-byte palette entry in `Bank1 reg 0x30..0x5F`
+  - candidate entry base: `0x30 + color_idx*3`
+  - example: slot value `0x43` means `color_idx=4`, which points to `reg 0x3C..0x3E`
+  - this mapping is consistent with:
+    - the LUT-sized block length (`48 = 16 * 3` bytes);
+    - color-index changes touching only `reg 0x02..0x05`, not `reg 0x30..0x5F`;
+    - successful direct writes to many bytes inside `reg 0x30..0x5F`
+
+### 6.1.1 RGB Palette LUT (`Bank1 reg 0x30..0x5F`) (Inferred)
+
+- Candidate role: 16-entry color lookup table used by the `color_idx` nibble in DPI slot registers.
+- Candidate layout:
+  - entry `0`: `reg 0x30..0x32`
+  - entry `1`: `reg 0x33..0x35`
+  - ...
+  - entry `15`: `reg 0x5D..0x5F`
+- Practical note:
+  - the block behaves like a palette table, not a per-slot color store;
+  - many bytes are writable, but some are masked or quantized on write, so entries should not yet be treated as unrestricted raw `RGB888`.
 
 ### 6.2 Active DPI Slot
 
@@ -172,43 +175,7 @@ Known codes:
 These registers were inferred from read-only behavior during guided interaction tests.
 They are not confirmed as stable protocol fields for writing.
 
-Confidence labels used in this section:
-
-- **High-confidence**: observed repeatedly and/or across multiple banks/steps with a
-  coherent interpretation.
-- **Medium-confidence**: repeated, but interpretation is still partly inferential.
-- **Single-run / narrow-confidence**: useful in the surveyed runs, but not yet confirmed
-  broadly enough to treat as stable protocol behavior.
-
-### 7.1 Bank Roles and Runtime Windows
-
-High-confidence observations from `bank-survey` and `bank-action` runs:
-
-- `Bank1` is the clearest source for compact button/action state.
-- `Bank0` and surveyed `Bank2+` windows expose richer runtime/event-like state.
-- No fully identical banks were observed in a full `0..255` dump survey.
-
-High-confidence `Bank0`-like windows confirmed by guided action tests:
-
-- `Bank0`
-- `Bank2`
-- `Bank7`
-- `Bank128`
-- `Bank133`
-- `Bank147`
-- `Bank255`
-
-These windows share a common runtime shortlist (Section 7.4), while still differing in
-some per-bank values and specialist registers.
-
-Survey-backed but still inferential:
-
-- Surveyed `Bank2+` windows were action-sensitive for `move`, `left`, `right`, `middle`,
-  `scroll`, `side`, and `CPI` steps.
-- The most useful working model is that these are additional **Bank0-like runtime
-  windows**, not empty/unused banks.
-
-### 7.2 Button Bitmask (Bank1)
+### 7.1 Button Bitmask (Bank1)
 
 High-confidence candidates:
 
@@ -217,18 +184,17 @@ High-confidence candidates:
   - right click: `0x02`
   - middle click: `0x04`
   - side buttons: `0x08`, `0x10`
-  - CPI/DPI button: `0x20`
 
 Additional related candidates:
 
 - `reg 0x2A` (`42`) and mirror `reg 0xAA` (`170`): observed values `0x1F/0x2F/0x4F`
-  during primary/side/CPI button actions.
+  during primary/side button actions.
 - `reg 0x2B` (`43`) and mirror `reg 0xAB` (`171`): event status-like transitions,
   often involving `0x00/0x02/0x11`.
 - `reg 0x75` (`117`) and mirror `reg 0xF5` (`245`): action-correlated state, common
   transitions `0x14 -> 0x15/0x16`.
 
-### 7.3 Motion/Event Candidates (Bank0-like Windows)
+### 7.2 Motion/Event Candidates (Bank0)
 
 High-confidence candidates:
 
@@ -242,64 +208,15 @@ Medium-confidence shared event/status group:
 - `reg 0x6C` (`108`) / `0xEC` (`236`)
 - `reg 0x6B` (`107`) / `0xEB` (`235`)
 - `reg 0x61` (`97`) / `0xE1` (`225`)
-- `reg 0x82..0x84` (`130..132`) (especially move-related)
+- mirrored copies `0x82..0x84` of base `0x02..0x04` (especially move-related)
 
-Medium-confidence observations:
-
-- `reg 0x02` and mirror `reg 0x82` frequently toggle between `0x01` and `0x81`
-  during motion/button/CPI activity in `Bank0`-like windows.
-- `reg 0x12` (`18`) / `0x92` (`146`) frequently flip to `0xFF` on runtime activity.
-- `reg 0x6B` (`107`) / `0xEB` (`235`) are among the most stable cross-bank action flags.
-- `reg 0x61` (`97`) / `0xE1` (`225`) often carry the clearest action-correlated payload
-  across multiple `Bank0`-like windows.
-
-### 7.4 Cross-Bank Runtime Shortlist
-
-High-confidence cross-bank shortlist:
-
-The following shortlist was shared by all surveyed `Bank0`-like windows
-(`0, 2, 7, 128, 133, 147, 255`) for the given action categories.
-
-Move:
-
-- `0x02`, `0x03`, `0x04`
-- `0x12`, `0x13`
-- `0x61`, `0x6B`
-- `0x82`, `0x83`, `0x84`
-- `0x92`, `0x93`
-- `0xE1`, `0xEB`
-
-Buttons (`left/right/middle/side`):
-
-- `0x02`, `0x03`, `0x04`
-- `0x12`
-- `0x61`, `0x6B`
-- `0x82`, `0x83`, `0x84`
-- `0x92`
-- `0xE1`, `0xEB`
-
-Medium-confidence scroll shortlist:
-
-- `0x6B`
-- often also `0x02`, `0x03`, `0x04`, `0x12`, `0x82`, `0x83`, `0x84`, `0x92`,
-  `0xE1`, `0xEB` in `Bank7`, `Bank128`, `Bank133`, `Bank147`, `Bank255`
-
-Medium-confidence CPI shortlist:
-
-- `0x02`, `0x82`
-- commonly `0x03`, `0x12`, `0x6B`, `0x83`, `0x92`, `0xEB`
-- weaker/less universal: `0x04`, `0x61`, `0x84`, `0xE1`
-
-Single-run / narrow-confidence specialist observations:
-
-- `Bank1 reg 0x28 / 0xA8`: clean per-button bitmask view.
-- `Bank2 reg 0xE3`: right/side-button specialist.
-- `Bank7 reg 0x63`: right/side-button specialist.
-- `Bank128 reg 0x13`: CPI-button specialist in the surveyed run.
-
-### 7.5 Mirror Pattern
+### 7.3 Mirror Pattern
 
 Many volatile/event-like registers appear mirrored by `+0x80` offset.
+Current working assumption: this is a hardware mirror, not a second independent
+register space, so only `0x00..0x7F` should be treated as unique during dumps
+and discovery scans.
+
 Examples seen in the experiment:
 
 - `0x28 <-> 0xA8`
@@ -311,7 +228,7 @@ Examples seen in the experiment:
 
 Method used to derive Section 7:
 
-1. Full baseline dump and idle-control step.
+1. Baseline dump over the unique `0x00..0x7F` half and idle-control step.
 2. Guided per-action capture (`move`, `left`, `right`, `middle`, `side`).
 3. Unknown-register diff against baseline.
 4. Noise filtering: any key changing in idle-control was removed.
@@ -321,16 +238,11 @@ Local tooling and artifacts:
 
 - Capture script: `scripts/unknown-register-experiment.sh`
 - Post-filter script: `scripts/unknown-register-action-specific.sh`
-- Bank survey: `scripts/bank-survey.sh`
-- Bank action survey: `scripts/bank-action-survey.sh`
-- Bank shortlist post-process: `scripts/bank-action-shortlist.sh`
 
 Status note:
 
 - Section 7 is empirical and should be treated as *experimental* until confirmed by
   repeated runs on multiple units/firmware revisions.
-- High-confidence items are the best current working map for read-only diagnostics.
-- Medium-confidence and single-run items should not yet be relied on as stable semantics.
 
 ## 9. Architectural Hypotheses and Design Rationale
 
