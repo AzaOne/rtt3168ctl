@@ -150,10 +150,43 @@ Known codes:
 | calculator | `0xFB` | 251 |
 | ctrl_w | `0xFC` | 252 |
 
+### 6.6 Bank1 Shadow Mirrors (Experimental)
+
+Non-interactive `apply`/`dump` diffs show high-confidence shadow copies of several
+documented Bank1 configuration registers at `+0x80` offset:
+
+- `reg 0x81` mirrors `reg 0x01` (RGB speed)
+- `reg 0x82..0x85` mirror `reg 0x02..0x05` (raw DPI slot bytes)
+- `reg 0x8A` mirrors `reg 0x0A` (RGB mode raw byte)
+- `reg 0x8B` mirrors `reg 0x0B` (CPI action raw byte)
+
+These are observed as raw-value mirrors, not yet confirmed as independently writable
+protocol fields.
+
+### 6.7 RGB Mode Helper Candidates (Experimental)
+
+Mode-specific apply diffs revealed an additional Bank1 pair correlated only with RGB mode
+selection:
+
+- `reg 0x2D` and mirror `reg 0xAD`
+
+Observed values:
+
+- baseline/on: `0x08`
+- breath: `0x18`
+- breath_segment: `0x28`
+- cycle6: `0x38`
+- cycle12: `0x48`
+- cycle768: `0x58`
+- off: `0x78`
+
+These behave like RGB mode helper/shadow bytes rather than primary mode selectors.
+
 ## 7. Inferred Runtime/Event Registers (Experimental)
 
-These registers were inferred from read-only behavior during guided interaction tests.
-They are not confirmed as stable protocol fields for writing.
+These registers were inferred from read-only behavior during guided interaction tests and
+from non-interactive `apply`/`dump` diff surveys. They are not confirmed as stable
+protocol fields for writing.
 
 ### 7.1 Button Bitmask (Bank1)
 
@@ -174,6 +207,14 @@ Additional related candidates:
 - `reg 0x75` (`117`) and mirror `reg 0xF5` (`245`): action-correlated state, common
   transitions `0x14 -> 0x15/0x16`.
 
+Apply-survey note:
+
+- `reg 0x2A/0xAA`, `0x2B/0xAB`, and `0x75/0xF5` also react during configuration writes,
+  so they appear to be mixed status/commit-state registers rather than pure button-only
+  telemetry.
+- In particular, `reg 0xAB` often clears from `0x11` to `0x00` during successful apply
+  scenarios.
+
 ### 7.2 Motion/Event Candidates (Bank0)
 
 High-confidence candidates:
@@ -190,33 +231,66 @@ Medium-confidence shared event/status group:
 - `reg 0x61` (`97`) / `0xE1` (`225`)
 - `reg 0x82..0x84` (`130..132`) (especially move-related)
 
+Broad apply/commit-noise group:
+
+- `reg 0x08` / `0x88`
+- `reg 0x39` / `0xB9`
+- `reg 0x60` / `0xE0`
+- `reg 0x62` / `0xE2`
+- `reg 0x64` / `0xE4`
+- `reg 0x65` / `0xE5`
+- `reg 0x66` / `0xE6`
+- `reg 0x67` / `0xE7`
+- `reg 0x68` / `0xE8`
+- `reg 0x69` / `0xE9`
+- `reg 0x6C` / `0xEC`
+- `reg 0x6D` / `0xED`
+
+These change during almost every successful configuration apply and currently look more
+like shared commit/status churn than feature-specific config mirrors.
+
 ### 7.3 Mirror Pattern
 
-Many volatile/event-like registers appear mirrored by `+0x80` offset.
+Many volatile/event-like and config-shadow registers appear mirrored by `+0x80` offset.
 Examples seen in the experiment:
 
+- `0x01 <-> 0x81`
+- `0x02 <-> 0x82`
+- `0x03 <-> 0x83`
+- `0x04 <-> 0x84`
+- `0x05 <-> 0x85`
+- `0x0A <-> 0x8A`
+- `0x0B <-> 0x8B`
 - `0x28 <-> 0xA8`
 - `0x2A <-> 0xAA`
 - `0x2B <-> 0xAB`
+- `0x2D <-> 0xAD`
 - `0x75 <-> 0xF5`
 
 ## 8. Method and Provenance
 
-Method used to derive Section 7:
+Methods used to derive Sections 6.6, 6.7, and 7:
 
-1. Full baseline dump and idle-control step.
-2. Guided per-action capture (`move`, `left`, `right`, `middle`, `side`).
-3. Unknown-register diff against baseline.
-4. Noise filtering: any key changing in idle-control was removed.
-5. Aggregation of action-specific changes across steps.
+1. Guided runtime/event capture:
+   - full baseline dump and idle-control step;
+   - guided per-action capture (`move`, `left`, `right`, `middle`, `side`);
+   - unknown-register diff against baseline;
+   - idle-noise filtering and aggregation across steps.
+2. Non-interactive config/apply survey:
+   - baseline read + full dump;
+   - controlled `apply` scenarios (`rgb-mode`, `speed`, `cpi-action`, `active-slot`, `dpi1..4`);
+   - post-apply full dump per scenario;
+   - aggregation of unknown-register diffs and filtering of common apply-noise keys.
 
 Local tooling and artifacts:
 
 - Capture script: `scripts/unknown-register-experiment.sh`
 - Post-filter script: `scripts/unknown-register-action-specific.sh`
 - Experimental implementation branch: `experimental` (kept separate from `main`)
+- Apply survey: `scripts/unknown-register-apply-survey.sh`
+- Apply-noise post-filter: `scripts/unknown-register-apply-noise-filter.sh`
 
 Status note:
 
-- Section 7 is empirical and should be treated as *experimental* until confirmed by
-  repeated runs on multiple units/firmware revisions.
+- Sections 6.6, 6.7, and 7 are empirical and should be treated as *experimental* until
+  confirmed by repeated runs on multiple units/firmware revisions.
