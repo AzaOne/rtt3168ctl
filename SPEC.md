@@ -45,6 +45,23 @@ This document describes the RTT3168CG2 mouse control protocol used by `rtt3168ct
 
 All operations above use `OUT + bRequest=0x01 + wValue=0x0100`.
 
+Observed/inferred bank-select pattern:
+
+- Candidate `BankN` can be probed with `wIndex = (N << 8) | 0x007F`
+- Confirmed examples: `N=0 -> 0x007F`, `N=1 -> 0x017F`
+- Only `Bank1` is currently known to require the extra `0x2009` I/O sync
+- In surveyed banks `0..255`, `reg 0x7F` and `reg 0xFF` read back the bank id itself
+  (`BankN: reg 0x7F = reg 0xFF = N`)
+
+Observed bank roles from dump/action surveys:
+
+- `Bank1` behaves as a separate compact config/button-event bank.
+- `Bank0` behaves as the primary runtime/event bank.
+- Surveyed banks `2, 7, 128, 133, 147, 255` behave as additional **Bank0-like runtime
+  windows**, not as empty/unused banks.
+- `Bank2+` are not byte-identical to `Bank0`, but they react to motion/button activity
+  through largely the same register families.
+
 ## 4. Session Lifecycle
 
 ### 4.1 BeginSession
@@ -150,45 +167,48 @@ Known codes:
 | calculator | `0xFB` | 251 |
 | ctrl_w | `0xFC` | 252 |
 
-### 6.6 Bank1 Shadow Mirrors (Experimental)
-
-Non-interactive `apply`/`dump` diffs show high-confidence shadow copies of several
-documented Bank1 configuration registers at `+0x80` offset:
-
-- `reg 0x81` mirrors `reg 0x01` (RGB speed)
-- `reg 0x82..0x85` mirror `reg 0x02..0x05` (raw DPI slot bytes)
-- `reg 0x8A` mirrors `reg 0x0A` (RGB mode raw byte)
-- `reg 0x8B` mirrors `reg 0x0B` (CPI action raw byte)
-
-These are observed as raw-value mirrors, not yet confirmed as independently writable
-protocol fields.
-
-### 6.7 RGB Mode Helper Candidates (Experimental)
-
-Mode-specific apply diffs revealed an additional Bank1 pair correlated only with RGB mode
-selection:
-
-- `reg 0x2D` and mirror `reg 0xAD`
-
-Observed values:
-
-- baseline/on: `0x08`
-- breath: `0x18`
-- breath_segment: `0x28`
-- cycle6: `0x38`
-- cycle12: `0x48`
-- cycle768: `0x58`
-- off: `0x78`
-
-These behave like RGB mode helper/shadow bytes rather than primary mode selectors.
-
 ## 7. Inferred Runtime/Event Registers (Experimental)
 
-These registers were inferred from read-only behavior during guided interaction tests and
-from non-interactive `apply`/`dump` diff surveys. They are not confirmed as stable
-protocol fields for writing.
+These registers were inferred from read-only behavior during guided interaction tests.
+They are not confirmed as stable protocol fields for writing.
 
-### 7.1 Button Bitmask (Bank1)
+Confidence labels used in this section:
+
+- **High-confidence**: observed repeatedly and/or across multiple banks/steps with a
+  coherent interpretation.
+- **Medium-confidence**: repeated, but interpretation is still partly inferential.
+- **Single-run / narrow-confidence**: useful in the surveyed runs, but not yet confirmed
+  broadly enough to treat as stable protocol behavior.
+
+### 7.1 Bank Roles and Runtime Windows
+
+High-confidence observations from `bank-survey` and `bank-action` runs:
+
+- `Bank1` is the clearest source for compact button/action state.
+- `Bank0` and surveyed `Bank2+` windows expose richer runtime/event-like state.
+- No fully identical banks were observed in a full `0..255` dump survey.
+
+High-confidence `Bank0`-like windows confirmed by guided action tests:
+
+- `Bank0`
+- `Bank2`
+- `Bank7`
+- `Bank128`
+- `Bank133`
+- `Bank147`
+- `Bank255`
+
+These windows share a common runtime shortlist (Section 7.4), while still differing in
+some per-bank values and specialist registers.
+
+Survey-backed but still inferential:
+
+- Surveyed `Bank2+` windows were action-sensitive for `move`, `left`, `right`, `middle`,
+  `scroll`, `side`, and `CPI` steps.
+- The most useful working model is that these are additional **Bank0-like runtime
+  windows**, not empty/unused banks.
+
+### 7.2 Button Bitmask (Bank1)
 
 High-confidence candidates:
 
@@ -197,25 +217,18 @@ High-confidence candidates:
   - right click: `0x02`
   - middle click: `0x04`
   - side buttons: `0x08`, `0x10`
+  - CPI/DPI button: `0x20`
 
 Additional related candidates:
 
 - `reg 0x2A` (`42`) and mirror `reg 0xAA` (`170`): observed values `0x1F/0x2F/0x4F`
-  during primary/side button actions.
+  during primary/side/CPI button actions.
 - `reg 0x2B` (`43`) and mirror `reg 0xAB` (`171`): event status-like transitions,
   often involving `0x00/0x02/0x11`.
 - `reg 0x75` (`117`) and mirror `reg 0xF5` (`245`): action-correlated state, common
   transitions `0x14 -> 0x15/0x16`.
 
-Apply-survey note:
-
-- `reg 0x2A/0xAA`, `0x2B/0xAB`, and `0x75/0xF5` also react during configuration writes,
-  so they appear to be mixed status/commit-state registers rather than pure button-only
-  telemetry.
-- In particular, `reg 0xAB` often clears from `0x11` to `0x00` during successful apply
-  scenarios.
-
-### 7.2 Motion/Event Candidates (Bank0)
+### 7.3 Motion/Event Candidates (Bank0-like Windows)
 
 High-confidence candidates:
 
@@ -231,66 +244,90 @@ Medium-confidence shared event/status group:
 - `reg 0x61` (`97`) / `0xE1` (`225`)
 - `reg 0x82..0x84` (`130..132`) (especially move-related)
 
-Broad apply/commit-noise group:
+Medium-confidence observations:
 
-- `reg 0x08` / `0x88`
-- `reg 0x39` / `0xB9`
-- `reg 0x60` / `0xE0`
-- `reg 0x62` / `0xE2`
-- `reg 0x64` / `0xE4`
-- `reg 0x65` / `0xE5`
-- `reg 0x66` / `0xE6`
-- `reg 0x67` / `0xE7`
-- `reg 0x68` / `0xE8`
-- `reg 0x69` / `0xE9`
-- `reg 0x6C` / `0xEC`
-- `reg 0x6D` / `0xED`
+- `reg 0x02` and mirror `reg 0x82` frequently toggle between `0x01` and `0x81`
+  during motion/button/CPI activity in `Bank0`-like windows.
+- `reg 0x12` (`18`) / `0x92` (`146`) frequently flip to `0xFF` on runtime activity.
+- `reg 0x6B` (`107`) / `0xEB` (`235`) are among the most stable cross-bank action flags.
+- `reg 0x61` (`97`) / `0xE1` (`225`) often carry the clearest action-correlated payload
+  across multiple `Bank0`-like windows.
 
-These change during almost every successful configuration apply and currently look more
-like shared commit/status churn than feature-specific config mirrors.
+### 7.4 Cross-Bank Runtime Shortlist
 
-### 7.3 Mirror Pattern
+High-confidence cross-bank shortlist:
 
-Many volatile/event-like and config-shadow registers appear mirrored by `+0x80` offset.
+The following shortlist was shared by all surveyed `Bank0`-like windows
+(`0, 2, 7, 128, 133, 147, 255`) for the given action categories.
+
+Move:
+
+- `0x02`, `0x03`, `0x04`
+- `0x12`, `0x13`
+- `0x61`, `0x6B`
+- `0x82`, `0x83`, `0x84`
+- `0x92`, `0x93`
+- `0xE1`, `0xEB`
+
+Buttons (`left/right/middle/side`):
+
+- `0x02`, `0x03`, `0x04`
+- `0x12`
+- `0x61`, `0x6B`
+- `0x82`, `0x83`, `0x84`
+- `0x92`
+- `0xE1`, `0xEB`
+
+Medium-confidence scroll shortlist:
+
+- `0x6B`
+- often also `0x02`, `0x03`, `0x04`, `0x12`, `0x82`, `0x83`, `0x84`, `0x92`,
+  `0xE1`, `0xEB` in `Bank7`, `Bank128`, `Bank133`, `Bank147`, `Bank255`
+
+Medium-confidence CPI shortlist:
+
+- `0x02`, `0x82`
+- commonly `0x03`, `0x12`, `0x6B`, `0x83`, `0x92`, `0xEB`
+- weaker/less universal: `0x04`, `0x61`, `0x84`, `0xE1`
+
+Single-run / narrow-confidence specialist observations:
+
+- `Bank1 reg 0x28 / 0xA8`: clean per-button bitmask view.
+- `Bank2 reg 0xE3`: right/side-button specialist.
+- `Bank7 reg 0x63`: right/side-button specialist.
+- `Bank128 reg 0x13`: CPI-button specialist in the surveyed run.
+
+### 7.5 Mirror Pattern
+
+Many volatile/event-like registers appear mirrored by `+0x80` offset.
 Examples seen in the experiment:
 
-- `0x01 <-> 0x81`
-- `0x02 <-> 0x82`
-- `0x03 <-> 0x83`
-- `0x04 <-> 0x84`
-- `0x05 <-> 0x85`
-- `0x0A <-> 0x8A`
-- `0x0B <-> 0x8B`
 - `0x28 <-> 0xA8`
 - `0x2A <-> 0xAA`
 - `0x2B <-> 0xAB`
-- `0x2D <-> 0xAD`
 - `0x75 <-> 0xF5`
 
 ## 8. Method and Provenance
 
-Methods used to derive Sections 6.6, 6.7, and 7:
+Method used to derive Section 7:
 
-1. Guided runtime/event capture:
-   - full baseline dump and idle-control step;
-   - guided per-action capture (`move`, `left`, `right`, `middle`, `side`);
-   - unknown-register diff against baseline;
-   - idle-noise filtering and aggregation across steps.
-2. Non-interactive config/apply survey:
-   - baseline read + full dump;
-   - controlled `apply` scenarios (`rgb-mode`, `speed`, `cpi-action`, `active-slot`, `dpi1..4`);
-   - post-apply full dump per scenario;
-   - aggregation of unknown-register diffs and filtering of common apply-noise keys.
+1. Full baseline dump and idle-control step.
+2. Guided per-action capture (`move`, `left`, `right`, `middle`, `side`).
+3. Unknown-register diff against baseline.
+4. Noise filtering: any key changing in idle-control was removed.
+5. Aggregation of action-specific changes across steps.
 
 Local tooling and artifacts:
 
 - Capture script: `scripts/unknown-register-experiment.sh`
 - Post-filter script: `scripts/unknown-register-action-specific.sh`
-- Experimental implementation branch: `experimental` (kept separate from `main`)
-- Apply survey: `scripts/unknown-register-apply-survey.sh`
-- Apply-noise post-filter: `scripts/unknown-register-apply-noise-filter.sh`
+- Bank survey: `scripts/bank-survey.sh`
+- Bank action survey: `scripts/bank-action-survey.sh`
+- Bank shortlist post-process: `scripts/bank-action-shortlist.sh`
 
 Status note:
 
-- Sections 6.6, 6.7, and 7 are empirical and should be treated as *experimental* until
-  confirmed by repeated runs on multiple units/firmware revisions.
+- Section 7 is empirical and should be treated as *experimental* until confirmed by
+  repeated runs on multiple units/firmware revisions.
+- High-confidence items are the best current working map for read-only diagnostics.
+- Medium-confidence and single-run items should not yet be relied on as stable semantics.
