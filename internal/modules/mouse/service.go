@@ -40,31 +40,31 @@ func NewService(repo *Repository) *Service {
 
 func (s *Service) BeginSession() error {
 	return errors.Join(
-		s.repo.SendControl(ReqTypeWrite, 1, 0, 0),
-		s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 23049),
-		s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 383),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, 0, 0),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxUnlock),
+		s.enterBank1(),
 	)
 }
 
 func (s *Service) EndSession() error {
 	return errors.Join(
-		s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 127),
-		s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 9),
-		s.repo.SendControl(ReqTypeWrite, 6, 0, 0),
+		s.enterBank0(),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, 9),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeReset, 0, 0),
 	)
 }
 
 func (s *Service) ReadStatus() (Status, error) {
-	if err := s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 127); err != nil {
+	if err := s.enterBank0(); err != nil {
 		return Status{}, err
 	}
 	activeVal, err := s.repo.ReadRegister(2)
 	if err != nil {
 		return Status{}, err
 	}
-	activeSlot := int(activeVal&0x0F) + 1
+	activeSlot := decodeActiveSlot(activeVal)
 
-	if err := s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 383); err != nil {
+	if err := s.enterBank1(); err != nil {
 		return Status{}, err
 	}
 
@@ -226,7 +226,7 @@ func (s *Service) SetRate(rateHz int) error {
 			break
 		}
 
-		if syncErr := s.repo.SendControl(ReqTypeWrite, 1, 0x0100, 383); syncErr != nil {
+		if syncErr := s.enterBank1(); syncErr != nil {
 			lastErr = errors.Join(lastErr, fmt.Errorf("resync before retry %d: %w", attempt+1, syncErr))
 		}
 		time.Sleep(backoffs[attempt])
@@ -291,6 +291,34 @@ func decodeRate(raw uint8) string {
 	default:
 		return "Unknown"
 	}
+}
+
+func decodeActiveSlot(raw uint8) int {
+	if raw <= 3 {
+		return int(raw) + 1
+	}
+
+	switch raw {
+	case 0x20:
+		return 2
+	case 0x40:
+		return 3
+	case 0x60:
+		return 4
+	default:
+		return int(raw&0x03) + 1
+	}
+}
+
+func (s *Service) enterBank0() error {
+	return s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxBank0)
+}
+
+func (s *Service) enterBank1() error {
+	return errors.Join(
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxBank1),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxBank1IO),
+	)
 }
 
 func decodeRGBMode(raw uint8) string {

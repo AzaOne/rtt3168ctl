@@ -4,6 +4,15 @@ const (
 	ReqTypeWrite = 0x40 // Vendor | Device | Out
 	ReqTypeRead  = 0xC0 // Vendor | Device | In
 
+	ReqCodeControl uint8 = 1
+	ReqCodeReset   uint8 = 6
+
+	ControlValDefault uint16 = 0x0100
+	ControlIdxBank0   uint16 = 127   // 0x007F
+	ControlIdxBank1   uint16 = 383   // 0x017F
+	ControlIdxBank1IO uint16 = 8201  // 0x2009
+	ControlIdxUnlock  uint16 = 23049 // 0x5A09
+
 	RegRGBSpeed  uint16 = 1
 	RegDPI1      uint16 = 2
 	RegDPI2      uint16 = 3
