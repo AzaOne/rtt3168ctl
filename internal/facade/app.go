@@ -198,7 +198,7 @@ func runExperimentalLoop(svc *mouse.Service, cmd Command, out io.Writer) error {
 		}
 
 		line := fmt.Sprintf(
-			"[%s] L:%d R:%d M:%d B:%d F:%d | dX:%4d dY:%4d | m:0x%02X e:0x%02X",
+			"[%s] L:%d R:%d M:%d B:%d F:%d | dX:%4d dY:%4d | m:0x%02X",
 			ts.Format("15:04:05.000"),
 			b2i(sample.Buttons.Left),
 			b2i(sample.Buttons.Right),
@@ -208,7 +208,6 @@ func runExperimentalLoop(svc *mouse.Service, cmd Command, out io.Writer) error {
 			sample.Motion.MoveX,
 			sample.Motion.MoveY,
 			sample.Buttons.Mask,
-			sample.Buttons.EffectiveMask,
 		)
 
 		if liveLine {

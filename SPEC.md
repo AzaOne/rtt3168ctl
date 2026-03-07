@@ -179,7 +179,7 @@ They are not confirmed as stable protocol fields for writing.
 
 High-confidence candidates:
 
-- `reg 0x28` (`40`) and mirror `reg 0xA8` (`168`): button bitmask
+- `reg 0x28` (`40`): button bitmask
   - left click: `0x01`
   - right click: `0x02`
   - middle click: `0x04`
@@ -187,42 +187,41 @@ High-confidence candidates:
 
 Additional related candidates:
 
-- `reg 0x2A` (`42`) and mirror `reg 0xAA` (`170`): observed values `0x1F/0x2F/0x4F`
+- `reg 0x2A` (`42`): observed values `0x1F/0x2F/0x4F`
   during primary/side button actions.
-- `reg 0x2B` (`43`) and mirror `reg 0xAB` (`171`): event status-like transitions,
+- `reg 0x2B` (`43`): event status-like transitions,
   often involving `0x00/0x02/0x11`.
-- `reg 0x75` (`117`) and mirror `reg 0xF5` (`245`): action-correlated state, common
+- `reg 0x75` (`117`): action-correlated state, common
   transitions `0x14 -> 0x15/0x16`.
 
 ### 7.2 Motion/Event Candidates (Bank0)
 
 High-confidence candidates:
 
-- Move-related deltas: `reg 0x03` (`3`), `reg 0x04` (`4`), with mirrored/paired activity
-  around `0x13` (`19`) and `0x93` (`147`).
+- Move-related deltas: `reg 0x03` (`3`), `reg 0x04` (`4`), with activity
+  around `0x13` (`19`).
 
 Medium-confidence shared event/status group:
 
-- `reg 0x08` (`8`) / `0x88` (`136`)
-- `reg 0x33` (`51`) / `0xB3` (`179`)
-- `reg 0x6C` (`108`) / `0xEC` (`236`)
-- `reg 0x6B` (`107`) / `0xEB` (`235`)
-- `reg 0x61` (`97`) / `0xE1` (`225`)
-- mirrored copies `0x82..0x84` of base `0x02..0x04` (especially move-related)
+- `reg 0x08` (`8`)
+- `reg 0x33` (`51`)
+- `reg 0x6C` (`108`)
+- `reg 0x6B` (`107`)
+- `reg 0x61` (`97`)
 
 ### 7.3 Mirror Pattern
 
-Many volatile/event-like registers appear mirrored by `+0x80` offset.
-Current working assumption: this is a hardware mirror, not a second independent
-register space, so only `0x00..0x7F` should be treated as unique during dumps
-and discovery scans.
+Many volatile/event-like registers appear mirrored by a `+0x80` offset.
+As detailed in Section 9.4, these are **hardware aliases** resulting from incomplete address decoding. They are not independent registers and reading them provides no additional data while doubling the USB I/O overhead.
 
-Examples seen in the experiment:
+All client implementations should query only the unique `0x00..0x7F` range.
 
-- `0x28 <-> 0xA8`
-- `0x2A <-> 0xAA`
-- `0x2B <-> 0xAB`
-- `0x75 <-> 0xF5`
+Examples seen in raw experiments:
+
+- `0x28` physically aliases `0xA8`
+- `0x2A` physically aliases `0xAA`
+- `0x2B` physically aliases `0xAB`
+- `0x75` physically aliases `0xF5`
 
 ## 8. Method and Provenance
 

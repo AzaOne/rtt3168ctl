@@ -30,29 +30,18 @@ const (
 	RegSensorID  uint16 = 29
 
 	// Experimental/inferred runtime registers (read-only use).
-	RegExpB1ButtonsMask       uint16 = 40  // 0x28
-	RegExpB1ButtonsStateA     uint16 = 42  // 0x2A
-	RegExpB1ButtonsStateB     uint16 = 43  // 0x2B
-	RegExpB1EventState        uint16 = 117 // 0x75
-	RegExpB1ButtonsMaskMirror uint16 = 168 // 0xA8
-	RegExpB1ButtonsStateAMirr uint16 = 170 // 0xAA
-	RegExpB1ButtonsStateBMirr uint16 = 171 // 0xAB
-	RegExpB1EventStateMirror  uint16 = 245 // 0xF5
+	RegExpB1ButtonsMask   uint16 = 40  // 0x28
+	RegExpB1ButtonsStateA uint16 = 42  // 0x2A
+	RegExpB1ButtonsStateB uint16 = 43  // 0x2B
+	RegExpB1EventState    uint16 = 117 // 0x75
 
-	RegExpB0MoveX            uint16 = 3   // 0x03
-	RegExpB0MoveY            uint16 = 4   // 0x04
-	RegExpB0EventLatch       uint16 = 8   // 0x08
-	RegExpB0MoveXMirror      uint16 = 19  // 0x13
-	RegExpB0EventGroup       uint16 = 51  // 0x33
-	RegExpB0EventStateC      uint16 = 97  // 0x61
-	RegExpB0EventStateA      uint16 = 107 // 0x6B
-	RegExpB0EventStateB      uint16 = 108 // 0x6C
-	RegExpB0EventLatchMirror uint16 = 136 // 0x88
-	RegExpB0MoveYMirror      uint16 = 147 // 0x93
-	RegExpB0EventGroupMirror uint16 = 179 // 0xB3
-	RegExpB0EventStateCMirr  uint16 = 225 // 0xE1
-	RegExpB0EventStateAMirr  uint16 = 235 // 0xEB
-	RegExpB0EventStateBMirr  uint16 = 236 // 0xEC
+	RegExpB0MoveX       uint16 = 3   // 0x03
+	RegExpB0MoveY       uint16 = 4   // 0x04
+	RegExpB0EventLatch  uint16 = 8   // 0x08
+	RegExpB0EventGroup  uint16 = 51  // 0x33
+	RegExpB0EventStateC uint16 = 97  // 0x61
+	RegExpB0EventStateA uint16 = 107 // 0x6B
+	RegExpB0EventStateB uint16 = 108 // 0x6C
 
 	Rate125  uint8 = 194
 	Rate250  uint8 = 130
