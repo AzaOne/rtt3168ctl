@@ -1,6 +1,6 @@
 # rtt3168ctl
 
-CLI utility for controlling a USB mouse based on the **RTT3168CG2** chip via vendor control transfers.
+CLI utility for controlling a USB mouse based on the **RTT3168CG2** posible **Instant Microelectronics Co., Ltd.** chip via vendor control transfers.
 
 Supported features:
 - read current mouse status;
@@ -111,7 +111,7 @@ Write a raw byte to a register (advanced diagnostics):
 ./build/rtt3168ctl -mode write -reg 14 -regval 2
 ```
 
-## VID/PID via Environment Variables
+## Device IDs and udev Rules
 
 Defaults:
 - `VID = 0x093A`
@@ -122,6 +122,24 @@ Override example:
 ```bash
 MOUSE_VID=0x093A MOUSE_PID=0x2533 ./build/rtt3168ctl -mode read
 ```
+
+Example udev rules (`52-rtt3168ctl-093a-2533.rules`):
+
+```udev
+SUBSYSTEM=="usb", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
+KERNEL=="hidraw*", ATTRS{busnum}=="1", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
+```
+
+Install and apply the rule:
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=usb
+sudo udevadm trigger --subsystem-match=hidraw
+```
+
+Replug the mouse (or reboot).
+
 ## Useful Make Commands
 
 ```bash
