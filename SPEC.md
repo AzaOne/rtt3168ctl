@@ -174,16 +174,12 @@ Additional related candidates:
 - `reg 0x75` (`117`) and mirror `reg 0xF5` (`245`): action-correlated state, common
   transitions `0x14 -> 0x15/0x16`.
 
-### 7.2 Motion/Wheel/CPI Event Candidates (Bank0)
+### 7.2 Motion/Event Candidates (Bank0)
 
 High-confidence candidates:
 
 - Move-related deltas: `reg 0x03` (`3`), `reg 0x04` (`4`), with mirrored/paired activity
   around `0x13` (`19`) and `0x93` (`147`).
-- Wheel-related deltas: `reg 0x12` (`18`) and mirror `reg 0x92` (`146`) (observed
-  `0x00 -> 0xFF` on scroll step).
-- CPI button event: `reg 0x34` (`52`) and mirror `reg 0xB4` (`180`) (observed
-  `0x00 -> 0x01` only on CPI step).
 
 Medium-confidence shared event/status group:
 
@@ -192,7 +188,7 @@ Medium-confidence shared event/status group:
 - `reg 0x6C` (`108`) / `0xEC` (`236`)
 - `reg 0x6B` (`107`) / `0xEB` (`235`)
 - `reg 0x61` (`97`) / `0xE1` (`225`)
-- `reg 0x82..0x84` (`130..132`) (especially move/scroll-related)
+- `reg 0x82..0x84` (`130..132`) (especially move-related)
 
 ### 7.3 Mirror Pattern
 
@@ -203,15 +199,13 @@ Examples seen in the experiment:
 - `0x2A <-> 0xAA`
 - `0x2B <-> 0xAB`
 - `0x75 <-> 0xF5`
-- `0x12 <-> 0x92`
-- `0x34 <-> 0xB4`
 
 ## 8. Method and Provenance
 
 Method used to derive Section 7:
 
 1. Full baseline dump and idle-control step.
-2. Guided per-action capture (`move`, `left`, `right`, `middle`, `scroll`, `side`, `CPI`).
+2. Guided per-action capture (`move`, `left`, `right`, `middle`, `side`).
 3. Unknown-register diff against baseline.
 4. Noise filtering: any key changing in idle-control was removed.
 5. Aggregation of action-specific changes across steps.

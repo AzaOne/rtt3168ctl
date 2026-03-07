@@ -44,6 +44,7 @@ The binary will be available at `build/rtt3168ctl`.
 - `apply` - apply one or more settings
 - `dump` - dump bank 0 and bank 1 registers (0..255)
 - `write` - raw register write (advanced)
+- `experimental` - stream inferred runtime/event registers in a loop (advanced)
 
 ## Main Parameters
 
@@ -60,6 +61,9 @@ The binary will be available at `build/rtt3168ctl`.
 - `-rate` - polling rate (`125/250/500/1000`)
 - `-rgb-mode` - RGB mode value
 - `-cpi-action` - CPI action value
+- `-exp-interval-ms` - poll interval for `experimental` mode (`>0`, default `20`)
+- `-exp-count` - number of printed samples in `experimental` mode (`0` = infinite)
+- `-exp-all` - print every sample in `experimental` mode (default: only changes)
 
 ### `-mode read`
 Read current device settings.
@@ -118,6 +122,21 @@ Write a raw byte to a register (advanced diagnostics):
 
 ```bash
 ./build/rtt3168ctl -mode write -reg 14 -regval 2
+```
+
+### `-mode experimental`
+Read inferred runtime/event registers in a loop.
+By default it prints only changed samples, updates one console line in place,
+and runs until `Ctrl+C`.
+
+```bash
+./build/rtt3168ctl -mode experimental
+```
+
+JSON lines, fixed number of samples:
+
+```bash
+./build/rtt3168ctl -mode experimental -json -exp-all -exp-interval-ms 100 -exp-count 50
 ```
 
 ## Guided Unknown-Register Experiment

@@ -36,6 +36,9 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	jsonPtr := fs.Bool("json", false, "JSON output for 'read' mode")
 	regPtr := fs.Int("reg", -1, "Raw register address")
 	regValPtr := fs.Int("regval", -1, "Raw register value")
+	expIntervalPtr := fs.Int("exp-interval-ms", 20, "Polling interval in ms for 'experimental' mode")
+	expCountPtr := fs.Int("exp-count", 0, "Number of printed samples for 'experimental' mode (0 = infinite)")
+	expAllPtr := fs.Bool("exp-all", false, "In 'experimental' mode print every sample, not only changes")
 
 	fs.Usage = func() {
 		helpText := fmt.Sprintf(`Usage: %s -mode <command> [options]
@@ -45,6 +48,7 @@ Commands:
   apply     Apply one or more settings
   dump      Dump bank 0 and bank 1 registers (0..255)
   write     Write a raw byte to a memory register (Advanced)
+  experimental  Read inferred runtime/event registers in a loop (Advanced)
 
 Options:
   -mode string
@@ -77,6 +81,12 @@ Options:
         Register address for 'write' mode (default -1)
   -regval int
         Register value for 'write' mode (default -1)
+  -exp-interval-ms int
+        Poll interval in ms for 'experimental' mode (default 20)
+  -exp-count int
+        Number of printed samples in 'experimental' mode (0 = infinite, default 0)
+  -exp-all
+        In 'experimental' mode, print every sample (default: print on change only)
 
 Arguments detail:
   [apply]
@@ -92,13 +102,21 @@ Arguments detail:
     -speed <0-255>        : RGB speed (requires -rgb-mode)
     -cpi-action <string>  : Same action values as in [cpi]
 
+  [experimental]
+    -exp-interval-ms <n>  : Poll interval in milliseconds (default 20)
+    -exp-count <n>        : Number of printed samples; 0 = run until Ctrl+C
+    -exp-all              : Print every sample (default: only changed samples)
+    -json                 : JSON lines output (timestamp + sample)
+
 Examples:
   %s -mode read
   %s -mode read -json
   %s -mode apply -dpi 800:1 -slot 1 -switch-slot
   %s -mode apply -rgb-mode on -rate 1000 -cpi-action vol_up
   %s -mode apply -dpi1 800:3 -dpi2 1200:5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
-`, binName, binName, binName, binName, binName, binName)
+  %s -mode experimental -exp-interval-ms 100
+  %s -mode experimental -json -exp-all -exp-count 50
+`, binName, binName, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
 
@@ -131,12 +149,25 @@ Examples:
 		JSONOutput: *jsonPtr,
 		Register:   *regPtr,
 		RegisterV:  *regValPtr,
+
+		ExperimentalIntervalMS: *expIntervalPtr,
+		ExperimentalCount:      *expCountPtr,
+		ExperimentalAll:        *expAllPtr,
 	}
 
 	switch cmd.Mode {
-	case "read", "apply", "dump", "write":
+	case "read", "apply", "dump", "write", "experimental":
 	default:
-		return facade.Command{}, false, fmt.Errorf("unknown mode %q; use read, apply, dump, write", cmd.Mode)
+		return facade.Command{}, false, fmt.Errorf("unknown mode %q; use read, apply, dump, write, experimental", cmd.Mode)
+	}
+
+	if cmd.Mode == "experimental" {
+		if cmd.ExperimentalIntervalMS <= 0 {
+			return facade.Command{}, false, errors.New("exp-interval-ms must be > 0")
+		}
+		if cmd.ExperimentalCount < 0 {
+			return facade.Command{}, false, errors.New("exp-count must be >= 0")
+		}
 	}
 
 	dpiSpecs := [4]string{*dpi1Ptr, *dpi2Ptr, *dpi3Ptr, *dpi4Ptr}
