@@ -17,7 +17,7 @@ func NewRepository(dev kernel.Device) *Repository {
 
 func (r *Repository) ReadRegister(regID uint16) (uint8, error) {
 	buf := make([]byte, 1)
-	_, err := r.dev.Control(ReqTypeRead, 1, 0x0100, regID, buf)
+	_, err := r.dev.Control(ReqTypeRead, ReqCodeControl, ControlValDefault, regID, buf)
 	if err != nil {
 		return 0, fmt.Errorf("read register %d: %w", regID, err)
 	}
@@ -25,7 +25,7 @@ func (r *Repository) ReadRegister(regID uint16) (uint8, error) {
 }
 
 func (r *Repository) WriteRegister(regID uint16, value uint8) error {
-	_, err := r.dev.Control(ReqTypeWrite, 1, 0x0100, (uint16(value)<<8)|regID, nil)
+	_, err := r.dev.Control(ReqTypeWrite, ReqCodeControl, ControlValDefault, (uint16(value)<<8)|regID, nil)
 	if err != nil {
 		return fmt.Errorf("write register %d: %w", regID, err)
 	}

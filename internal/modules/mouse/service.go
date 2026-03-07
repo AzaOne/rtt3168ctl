@@ -49,7 +49,7 @@ func (s *Service) BeginSession() error {
 func (s *Service) EndSession() error {
 	return errors.Join(
 		s.enterBank0(),
-		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, 9),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxLock),
 		s.repo.SendControl(ReqTypeWrite, ReqCodeReset, 0, 0),
 	)
 }
@@ -156,7 +156,9 @@ func (s *Service) SetRGB(mode string, speed int) error {
 	case "on":
 		base = RGBAlwaysOn
 	case "breath":
-		base = RGBBreathing
+		base = RGBBreath
+	case "breath_segment", "segment", "breath_seg":
+		base = RGBBreathSegment
 	case "cycle6":
 		base = RGBCycle6
 	case "cycle12":
@@ -164,7 +166,7 @@ func (s *Service) SetRGB(mode string, speed int) error {
 	case "cycle768":
 		base = RGBCycle768
 	default:
-		return fmt.Errorf("invalid RGB mode %q", mode)
+		return fmt.Errorf("invalid RGB mode %q; use off, on, breath, breath_segment, cycle6, cycle12, or cycle768", mode)
 	}
 
 	currentRGB, err := s.repo.ReadRegister(RegRGBMode)
@@ -323,8 +325,10 @@ func (s *Service) enterBank1() error {
 
 func decodeRGBMode(raw uint8) string {
 	switch raw & 0xF0 {
-	case 0x40:
+	case 0x20:
 		return "Breathing"
+	case 0x40:
+		return "Breathing + Segment Cycle"
 	case 0xE0:
 		return "Off"
 	case 0x00:

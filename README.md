@@ -95,6 +95,15 @@ Full profile:
   -cpi-action vol_up
 ```
 
+Supported `-rgb-mode` values:
+- `off`
+- `on`
+- `breath`
+- `breath_segment`
+- `cycle6`
+- `cycle12`
+- `cycle768`
+
 You can still use `-color1..-color4` separately; if both are set, values must match.
 
 ### `-mode dump`

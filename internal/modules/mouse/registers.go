@@ -12,6 +12,7 @@ const (
 	ControlIdxBank1   uint16 = 383   // 0x017F
 	ControlIdxBank1IO uint16 = 8201  // 0x2009
 	ControlIdxUnlock  uint16 = 23049 // 0x5A09
+	ControlIdxLock    uint16 = 9     // 0x0009
 
 	RegRGBSpeed  uint16 = 1
 	RegDPI1      uint16 = 2
@@ -31,12 +32,13 @@ const (
 	Rate500  uint8 = 66
 	Rate1000 uint8 = 2
 
-	RGBAlwaysOn  uint8 = 0x01
-	RGBBreathing uint8 = 0x41
-	RGBCycle6    uint8 = 0x61
-	RGBCycle12   uint8 = 0x81
-	RGBCycle768  uint8 = 0xA1
-	RGBOff       uint8 = 0xE1
+	RGBAlwaysOn      uint8 = 0x01
+	RGBBreath        uint8 = 0x21
+	RGBBreathSegment uint8 = 0x41
+	RGBCycle6        uint8 = 0x61
+	RGBCycle12       uint8 = 0x81
+	RGBCycle768      uint8 = 0xA1
+	RGBOff           uint8 = 0xE1
 )
 
 var CPIActionMap = map[string]uint8{

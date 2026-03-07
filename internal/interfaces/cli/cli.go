@@ -31,7 +31,7 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	color4Ptr := fs.Int("color4", -1, "Color index for slot 4 (0-15)")
 	activeSlotPtr := fs.Int("active-slot", -1, "Activate DPI slot (1-4)")
 	ratePtr := fs.Int("rate", -1, "USB polling rate (125/250/500/1000)")
-	rgbModePtr := fs.String("rgb-mode", "", "RGB mode (off/on/breath/cycle6/cycle12/cycle768)")
+	rgbModePtr := fs.String("rgb-mode", "", "RGB mode (off/on/breath/breath_segment/cycle6/cycle12/cycle768)")
 	cpiActionPtr := fs.String("cpi-action", "", "CPI button action")
 	jsonPtr := fs.Bool("json", false, "JSON output for 'read' mode")
 	regPtr := fs.Int("reg", -1, "Raw register address")
@@ -68,7 +68,7 @@ Options:
   -rate int
         USB polling rate (125/250/500/1000). -1 skips.
   -rgb-mode string
-        RGB mode (off/on/breath/cycle6/cycle12/cycle768)
+        RGB mode (off/on/breath/breath_segment/cycle6/cycle12/cycle768)
   -cpi-action string
         CPI action value
   -json
@@ -88,7 +88,7 @@ Arguments detail:
     -color1..-color4 <int>: Color for slots 1..4 (0..15), -1 = keep current
     -active-slot <1-4>    : Slot to activate after applying
     -rate <int>           : Polling rate (125/250/500/1000)
-    -rgb-mode <string>    : off, on, breath, cycle6, cycle12, cycle768
+    -rgb-mode <string>    : off, on, breath, breath_segment, cycle6, cycle12, cycle768
     -speed <0-255>        : RGB speed (requires -rgb-mode)
     -cpi-action <string>  : Same action values as in [cpi]
 
