@@ -1,6 +1,6 @@
 # rtt3168ctl
 
-CLI utility for controlling a USB mouse based on the **RTT3168CG2** posible **Instant Microelectronics Co., Ltd.** chip via vendor control transfers.
+CLI utility for controlling a USB mouse based on the **RTT3168CG2** microchip, possibly manufactured by **Instant Microelectronics Co., Ltd.** chip via vendor control transfers.
 
 Supported features:
 - read current mouse status;
