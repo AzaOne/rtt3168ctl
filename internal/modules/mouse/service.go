@@ -122,7 +122,7 @@ func (s *Service) ReadStatus() (Status, error) {
 }
 
 func (s *Service) DumpRegisters(start, end uint16) ([]RegisterValue, error) {
-	if start == 0 || end < start {
+	if end < start {
 		return nil, fmt.Errorf("invalid dump range: %d-%d", start, end)
 	}
 
@@ -135,6 +135,20 @@ func (s *Service) DumpRegisters(start, end uint16) ([]RegisterValue, error) {
 		out = append(out, RegisterValue{Register: i, Value: val})
 	}
 	return out, nil
+}
+
+func (s *Service) DumpBank0Registers(start, end uint16) ([]RegisterValue, error) {
+	if err := s.enterBank0(); err != nil {
+		return nil, err
+	}
+	return s.DumpRegisters(start, end)
+}
+
+func (s *Service) DumpBank1Registers(start, end uint16) ([]RegisterValue, error) {
+	if err := s.enterBank1(); err != nil {
+		return nil, err
+	}
+	return s.DumpRegisters(start, end)
 }
 
 func (s *Service) WriteRaw(regID uint16, value uint8) error {

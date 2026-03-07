@@ -31,6 +31,11 @@ type App struct {
 	kernel *kernel.Kernel
 }
 
+const (
+	dumpRegStart uint16 = 0
+	dumpRegEnd   uint16 = 255
+)
+
 func New(k *kernel.Kernel) *App {
 	return &App{kernel: k}
 }
@@ -94,13 +99,22 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		printStatus(out, status)
 		return nil
 	case "dump":
-		dump, err := svc.DumpRegisters(1, 30)
+		bank0Dump, err := svc.DumpBank0Registers(dumpRegStart, dumpRegEnd)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "Memory Dump (Bank 1)")
-		for _, item := range dump {
-			fmt.Fprintf(out, "%02d: 0x%02X\n", item.Register, item.Value)
+		bank1Dump, err := svc.DumpBank1Registers(dumpRegStart, dumpRegEnd)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, "Memory Dump (Bank 0, registers 0..255)")
+		for _, item := range bank0Dump {
+			fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
+		}
+		fmt.Fprintln(out)
+		fmt.Fprintln(out, "Memory Dump (Bank 1, registers 0..255)")
+		for _, item := range bank1Dump {
+			fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
 		}
 		return nil
 	case "write":

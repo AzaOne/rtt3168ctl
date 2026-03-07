@@ -42,7 +42,7 @@ The binary will be available at `build/rtt3168ctl`.
 
 - `read` - read current configuration
 - `apply` - apply one or more settings
-- `dump` - dump bank 1 registers (1..30)
+- `dump` - dump bank 0 and bank 1 registers (0..255)
 - `write` - raw register write (advanced)
 
 ## Main Parameters
@@ -107,7 +107,7 @@ Supported `-rgb-mode` values:
 You can still use `-color1..-color4` separately; if both are set, values must match.
 
 ### `-mode dump`
-Dump raw register values from bank 1 (registers `1..30`):
+Dump raw register values from bank 0 and bank 1 (registers `0..255`):
 
 ```bash
 ./build/rtt3168ctl -mode dump

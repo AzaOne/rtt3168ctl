@@ -43,7 +43,7 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 Commands:
   read      Read current hardware configuration
   apply     Apply one or more settings
-  dump      Dump bank 1 registers (1..30)
+  dump      Dump bank 0 and bank 1 registers (0..255)
   write     Write a raw byte to a memory register (Advanced)
 
 Options:
