@@ -84,7 +84,7 @@ func (s *Service) BeginSession() error {
 	return errors.Join(
 		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, 0, 0),
 		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxUnlock),
-		s.enterBank1(),
+		s.enterBank(1),
 	)
 }
 
@@ -330,14 +330,15 @@ func (s *Service) DumpRegisters(start, end uint16) ([]RegisterValue, error) {
 }
 
 func (s *Service) DumpBank0Registers(start, end uint16) ([]RegisterValue, error) {
-	if err := s.enterBank0(); err != nil {
-		return nil, err
-	}
-	return s.DumpRegisters(start, end)
+	return s.DumpBankRegisters(0, start, end)
 }
 
 func (s *Service) DumpBank1Registers(start, end uint16) ([]RegisterValue, error) {
-	if err := s.enterBank1(); err != nil {
+	return s.DumpBankRegisters(1, start, end)
+}
+
+func (s *Service) DumpBankRegisters(bank, start, end uint16) ([]RegisterValue, error) {
+	if err := s.enterBank(bank); err != nil {
 		return nil, err
 	}
 	return s.DumpRegisters(start, end)
@@ -527,12 +528,25 @@ func decodeButtonMask(mask uint8) (left, right, middle, sideBack, sideForward bo
 }
 
 func (s *Service) enterBank0() error {
-	return s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxBank0)
+	return s.enterBank(0)
 }
 
 func (s *Service) enterBank1() error {
+	return s.enterBank(1)
+}
+
+func (s *Service) enterBank(bank uint16) error {
+	if bank > MaxBankID {
+		return fmt.Errorf("invalid bank %d; must be 0..%d", bank, MaxBankID)
+	}
+
+	selectIdx := (bank << 8) | ControlIdxBankSelect
+	if bank != 1 {
+		return s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, selectIdx)
+	}
+
 	return errors.Join(
-		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxBank1),
+		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, selectIdx),
 		s.repo.SendControl(ReqTypeWrite, ReqCodeControl, ControlValDefault, ControlIdxBank1IO),
 	)
 }

@@ -42,7 +42,7 @@ The binary will be available at `build/rtt3168ctl`.
 
 - `read` - read current configuration
 - `apply` - apply one or more settings
-- `dump` - dump bank 0 and bank 1 registers (0..255)
+- `dump` - dump raw registers from one or more banks (0..255 per bank)
 - `write` - raw register write (advanced)
 - `experimental` - stream inferred runtime/event registers in a loop (advanced)
 
@@ -58,6 +58,7 @@ The binary will be available at `build/rtt3168ctl`.
 - `-speed` - RGB speed (`0-255`), `-1` = keep current
 - `-json` - JSON output for `-mode read`
 - `-reg`, `-regval` - raw values for `write`
+- `-dump-banks` - banks to read in `dump` mode (`0,1`, `0-7`, or `all`)
 - `-rate` - polling rate (`125/250/500/1000`)
 - `-rgb-mode` - RGB mode value
 - `-cpi-action` - CPI action value
@@ -111,10 +112,17 @@ Supported `-rgb-mode` values:
 You can still use `-color1..-color4` separately; if both are set, values must match.
 
 ### `-mode dump`
-Dump raw register values from bank 0 and bank 1 (registers `0..255`):
+Dump raw register values from one or more banks (registers `0..255` for each bank).
+By default the tool reads banks `0` and `1`.
 
 ```bash
 ./build/rtt3168ctl -mode dump
+```
+
+Probe additional candidate banks:
+
+```bash
+./build/rtt3168ctl -mode dump -dump-banks 0-7
 ```
 
 ### `-mode write`
@@ -158,6 +166,38 @@ Optional parameters:
   --out ./experiments/session-01 \
   --bin ./build/rtt3168ctl
 ```
+
+To inspect candidate banks added via `-dump-banks`, use:
+
+```bash
+./scripts/bank-survey.sh --banks 0-15
+```
+
+The script captures several dumps and summarizes:
+- volatile registers;
+- stable non-trivial values (`!= 0x00` and `!= 0xFF`);
+- groups of banks with identical snapshots.
+
+To check which banks react to movement/buttons at runtime, use:
+
+```bash
+./scripts/bank-action-survey.sh --banks 0,1,2,7,128,133,147,255
+```
+
+It captures guided action steps and writes both:
+- per-step diffs vs baseline;
+- idle-filtered action-specific activity.
+
+To reduce `bank-action` output to a practical register shortlist, use:
+
+```bash
+./scripts/bank-action-shortlist.sh
+```
+
+It creates:
+- a per-bank shortlist;
+- a cross-bank core shortlist;
+- single-bank specialists (for example button-only bank views).
 
 ## Device IDs and udev Rules
 

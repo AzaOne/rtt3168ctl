@@ -29,6 +29,7 @@ type Command struct {
 	JSONOutput bool
 	Register   int
 	RegisterV  int
+	DumpBanks  []uint16
 
 	ExperimentalIntervalMS int
 	ExperimentalCount      int
@@ -107,22 +108,23 @@ func executeMode(svc *mouse.Service, cmd Command, out io.Writer) error {
 		printStatus(out, status)
 		return nil
 	case "dump":
-		bank0Dump, err := svc.DumpBank0Registers(dumpRegStart, dumpRegEnd)
-		if err != nil {
-			return err
+		banks := cmd.DumpBanks
+		if len(banks) == 0 {
+			banks = []uint16{0, 1}
 		}
-		bank1Dump, err := svc.DumpBank1Registers(dumpRegStart, dumpRegEnd)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(out, "Memory Dump (Bank 0, registers 0..255)")
-		for _, item := range bank0Dump {
-			fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
-		}
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Memory Dump (Bank 1, registers 0..255)")
-		for _, item := range bank1Dump {
-			fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
+
+		for i, bank := range banks {
+			bankDump, err := svc.DumpBankRegisters(bank, dumpRegStart, dumpRegEnd)
+			if err != nil {
+				return fmt.Errorf("dump bank %d: %w", bank, err)
+			}
+			if i > 0 {
+				fmt.Fprintln(out)
+			}
+			fmt.Fprintf(out, "Memory Dump (Bank %d, registers 0..255)\n", bank)
+			for _, item := range bankDump {
+				fmt.Fprintf(out, "%03d (0x%02X): 0x%02X\n", item.Register, item.Register, item.Value)
+			}
 		}
 		return nil
 	case "write":

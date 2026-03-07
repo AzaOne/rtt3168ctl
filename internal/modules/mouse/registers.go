@@ -7,12 +7,14 @@ const (
 	ReqCodeControl uint8 = 1
 	ReqCodeReset   uint8 = 6
 
-	ControlValDefault uint16 = 0x0100
-	ControlIdxBank0   uint16 = 127   // 0x007F
-	ControlIdxBank1   uint16 = 383   // 0x017F
-	ControlIdxBank1IO uint16 = 8201  // 0x2009
-	ControlIdxUnlock  uint16 = 23049 // 0x5A09
-	ControlIdxLock    uint16 = 9     // 0x0009
+	ControlValDefault    uint16 = 0x0100
+	ControlIdxBankSelect uint16 = 127   // 0x007F, bank id lives in the high byte
+	ControlIdxBank0      uint16 = 127   // 0x007F
+	ControlIdxBank1      uint16 = 383   // 0x017F
+	ControlIdxBank1IO    uint16 = 8201  // 0x2009
+	ControlIdxUnlock     uint16 = 23049 // 0x5A09
+	ControlIdxLock       uint16 = 9     // 0x0009
+	MaxBankID            uint16 = 255
 
 	RegRGBSpeed  uint16 = 1
 	RegDPI1      uint16 = 2
