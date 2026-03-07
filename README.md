@@ -1,6 +1,6 @@
 # rtt3168ctl
 
-CLI utility for controlling a USB mouse based on the **RTT3168CG2** microchip, possibly manufactured by **Instant Microelectronics Co., Ltd.** chip via vendor control transfers.
+CLI utility for controlling a USB mouse based on the **RTT3168CG2** microchip, possibly manufactured by **Instant Microelectronics Co., Ltd.** via vendor control transfers.
 
 Supported features:
 - read current mouse status;
@@ -130,7 +130,7 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
 KERNEL=="hidraw*", ATTRS{busnum}=="1", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
 ```
 
-Install and apply the rule:
+Apply the rule:
 
 ```bash
 sudo udevadm control --reload-rules
