@@ -149,3 +149,79 @@ Known codes:
 | my_computer | `0xFA` | 250 |
 | calculator | `0xFB` | 251 |
 | ctrl_w | `0xFC` | 252 |
+
+## 7. Inferred Runtime/Event Registers (Experimental)
+
+These registers were inferred from read-only behavior during guided interaction tests.
+They are not confirmed as stable protocol fields for writing.
+
+### 7.1 Button Bitmask (Bank1)
+
+High-confidence candidates:
+
+- `reg 0x28` (`40`) and mirror `reg 0xA8` (`168`): button bitmask
+  - left click: `0x01`
+  - right click: `0x02`
+  - middle click: `0x04`
+  - side buttons: `0x08`, `0x10`
+
+Additional related candidates:
+
+- `reg 0x2A` (`42`) and mirror `reg 0xAA` (`170`): observed values `0x1F/0x2F/0x4F`
+  during primary/side button actions.
+- `reg 0x2B` (`43`) and mirror `reg 0xAB` (`171`): event status-like transitions,
+  often involving `0x00/0x02/0x11`.
+- `reg 0x75` (`117`) and mirror `reg 0xF5` (`245`): action-correlated state, common
+  transitions `0x14 -> 0x15/0x16`.
+
+### 7.2 Motion/Wheel/CPI Event Candidates (Bank0)
+
+High-confidence candidates:
+
+- Move-related deltas: `reg 0x03` (`3`), `reg 0x04` (`4`), with mirrored/paired activity
+  around `0x13` (`19`) and `0x93` (`147`).
+- Wheel-related deltas: `reg 0x12` (`18`) and mirror `reg 0x92` (`146`) (observed
+  `0x00 -> 0xFF` on scroll step).
+- CPI button event: `reg 0x34` (`52`) and mirror `reg 0xB4` (`180`) (observed
+  `0x00 -> 0x01` only on CPI step).
+
+Medium-confidence shared event/status group:
+
+- `reg 0x08` (`8`) / `0x88` (`136`)
+- `reg 0x33` (`51`) / `0xB3` (`179`)
+- `reg 0x6C` (`108`) / `0xEC` (`236`)
+- `reg 0x6B` (`107`) / `0xEB` (`235`)
+- `reg 0x61` (`97`) / `0xE1` (`225`)
+- `reg 0x82..0x84` (`130..132`) (especially move/scroll-related)
+
+### 7.3 Mirror Pattern
+
+Many volatile/event-like registers appear mirrored by `+0x80` offset.
+Examples seen in the experiment:
+
+- `0x28 <-> 0xA8`
+- `0x2A <-> 0xAA`
+- `0x2B <-> 0xAB`
+- `0x75 <-> 0xF5`
+- `0x12 <-> 0x92`
+- `0x34 <-> 0xB4`
+
+## 8. Method and Provenance
+
+Method used to derive Section 7:
+
+1. Full baseline dump and idle-control step.
+2. Guided per-action capture (`move`, `left`, `right`, `middle`, `scroll`, `side`, `CPI`).
+3. Unknown-register diff against baseline.
+4. Noise filtering: any key changing in idle-control was removed.
+5. Aggregation of action-specific changes across steps.
+
+Local tooling and artifacts:
+
+- Capture script: `scripts/unknown-register-experiment.sh`
+- Post-filter script: `scripts/unknown-register-action-specific.sh`
+
+Status note:
+
+- Section 7 is empirical and should be treated as *experimental* until confirmed by
+  repeated runs on multiple units/firmware revisions.

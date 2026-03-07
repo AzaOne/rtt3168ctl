@@ -120,6 +120,26 @@ Write a raw byte to a register (advanced diagnostics):
 ./build/rtt3168ctl -mode write -reg 14 -regval 2
 ```
 
+## Guided Unknown-Register Experiment
+
+Use this interactive script to investigate registers not documented in `SPEC.md`.
+It guides you through movement/click/scroll/button actions and reports only
+unknown-register changes relative to an idle baseline.
+
+```bash
+./scripts/unknown-register-experiment.sh
+```
+
+Optional parameters:
+
+```bash
+./scripts/unknown-register-experiment.sh \
+  --samples 10 \
+  --duration 8 \
+  --out ./experiments/session-01 \
+  --bin ./build/rtt3168ctl
+```
+
 ## Device IDs and udev Rules
 
 Defaults:
