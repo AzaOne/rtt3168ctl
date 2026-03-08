@@ -95,14 +95,13 @@ All operations above use `OUT + bRequest=0x01 + wValue=0x0100`.
 ### 6.1.1 RGB Palette LUT (`Bank1 reg 0x30..0x5F`) (Inferred)
 
 - Candidate role: 16-entry color lookup table used by the `color_idx` nibble in DPI slot registers.
-- Candidate layout:
-  - entry `0`: `reg 0x30..0x32`
-  - entry `1`: `reg 0x33..0x35`
-  - ...
-  - entry `15`: `reg 0x5D..0x5F`
+- Note: This block is currently **read-only** in application usage, and currently its components remain undefined in code (`registers.go`).
 - Practical note:
   - the block behaves like a palette table, not a per-slot color store;
   - many bytes are writable, but some are masked or quantized on write, so entries should not yet be treated as unrestricted raw `RGB888`.
+
+See Section 10 for the full Bank 1 map which incorporates this 48-byte RGB block.
+
 
 ### 6.2 Active DPI Slot
 
@@ -280,3 +279,277 @@ The structure of the RTT3168CG2 protocol exhibits characteristics typical of low
 
 **Observation:** Event and motion polling (Section 7) can be performed via Vendor-Specific Control Transfers (`bmRequestType = 0xC0`).
 **Rationale:** During normal OS operation, the mouse transmits motion and clicks via standard USB Interrupt endpoints (as a class-compliant HID device). The Control Transfer interface documented here is a **vendor-specific diagnostic and configuration interface**. The manufacturer tool uses this protocol to bypass the OS HID stack and read the MCU/sensor RAM directly (e.g., for factory calibration or drawing DPI tracking graphs). This explains the raw, unpolished nature of the exposed event registers.
+
+## 10. Complete Register Maps (0x00 - 0x7F)
+
+This section details the full 128-byte address space for both Bank 0 and Bank 1, integrating default values sampled from experimental data and current defined constants.
+
+### 10.1 Bank 0
+
+Defined in code: 7 / 128 (Assumed/Inferred: 0 / 128)
+
+| Reg (Hex) | Dec | Default (`sample-01`) | Status | Function / Role |
+|---|---|---|---|---|
+| `0x00` | 0 | `0x31` | Undefined | Unknown |
+| `0x01` | 1 | `0xA1` | Undefined | Unknown |
+| `0x02` | 2 | `0x01` | Undefined | Unknown |
+| `0x03` | 3 | `0x00` | **Defined** | Move X (RegExpB0MoveX) |
+| `0x04` | 4 | `0x00` | **Defined** | Move Y (RegExpB0MoveY) |
+| `0x05` | 5 | `0x80` | Undefined | Unknown |
+| `0x06` | 6 | `0x00` | Undefined | Unknown |
+| `0x07` | 7 | `0x00` | Undefined | Unknown |
+| `0x08` | 8 | `0x02` | **Defined** | Event Latch (RegExpB0EventLatch) |
+| `0x09` | 9 | `0x5A` | Undefined | Unknown |
+| `0x0A` | 10 | `0x17` | Undefined | Unknown |
+| `0x0B` | 11 | `0x00` | Undefined | Unknown |
+| `0x0C` | 12 | `0xF0` | Undefined | Unknown |
+| `0x0D` | 13 | `0x13` | Undefined | Unknown |
+| `0x0E` | 14 | `0x13` | Undefined | Unknown |
+| `0x0F` | 15 | `0x00` | Undefined | Unknown |
+| `0x10` | 16 | `0x23` | Undefined | Unknown |
+| `0x11` | 17 | `0x80` | Undefined | Unknown |
+| `0x12` | 18 | `0x00` | Undefined | Unknown |
+| `0x13` | 19 | `0x00` | Undefined | Unknown |
+| `0x14` | 20 | `0x00` | Undefined | Unknown |
+| `0x15` | 21 | `0x3C` | Undefined | Unknown |
+| `0x16` | 22 | `0x40` | Undefined | Unknown |
+| `0x17` | 23 | `0x32` | Undefined | Unknown |
+| `0x18` | 24 | `0x40` | Undefined | Unknown |
+| `0x19` | 25 | `0x4B` | Undefined | Unknown |
+| `0x1A` | 26 | `0xFC` | Undefined | Unknown |
+| `0x1B` | 27 | `0x4B` | Undefined | Unknown |
+| `0x1C` | 28 | `0xD5` | Undefined | Unknown |
+| `0x1D` | 29 | `0xC8` | Undefined | Unknown |
+| `0x1E` | 30 | `0xAA` | Undefined | Unknown |
+| `0x1F` | 31 | `0x97` | Undefined | Unknown |
+| `0x20` | 32 | `0x28` | Undefined | Unknown |
+| `0x21` | 33 | `0x1E` | Undefined | Unknown |
+| `0x22` | 34 | `0x1E` | Undefined | Unknown |
+| `0x23` | 35 | `0x14` | Undefined | Unknown |
+| `0x24` | 36 | `0xEA` | Undefined | Unknown |
+| `0x25` | 37 | `0x32` | Undefined | Unknown |
+| `0x26` | 38 | `0x22` | Undefined | Unknown |
+| `0x27` | 39 | `0x05` | Undefined | Unknown |
+| `0x28` | 40 | `0x14` | Undefined | Unknown |
+| `0x29` | 41 | `0x04` | Undefined | Unknown |
+| `0x2A` | 42 | `0x00` | Undefined | Unknown |
+| `0x2B` | 43 | `0x02` | Undefined | Unknown |
+| `0x2C` | 44 | `0x00` | Undefined | Unknown |
+| `0x2D` | 45 | `0x0F` | Undefined | Unknown |
+| `0x2E` | 46 | `0x00` | Undefined | Unknown |
+| `0x2F` | 47 | `0x05` | Undefined | Unknown |
+| `0x30` | 48 | `0x08` | Undefined | Unknown |
+| `0x31` | 49 | `0x01` | Undefined | Unknown |
+| `0x32` | 50 | `0x92` | Undefined | Unknown |
+| `0x33` | 51 | `0x02` | **Defined** | Event Group (RegExpB0EventGroup) |
+| `0x34` | 52 | `0x00` | Undefined | Unknown |
+| `0x35` | 53 | `0x22` | Undefined | Unknown |
+| `0x36` | 54 | `0x05` | Undefined | Unknown |
+| `0x37` | 55 | `0x00` | Undefined | Unknown |
+| `0x38` | 56 | `0x00` | Undefined | Unknown |
+| `0x39` | 57 | `0x60` | Undefined | Unknown |
+| `0x3A` | 58 | `0x00` | Undefined | Unknown |
+| `0x3B` | 59 | `0x01` | Undefined | Unknown |
+| `0x3C` | 60 | `0x23` | Undefined | Unknown |
+| `0x3D` | 61 | `0x31` | Undefined | Unknown |
+| `0x3E` | 62 | `0xA5` | Undefined | Unknown |
+| `0x3F` | 63 | `0x02` | Undefined | Unknown |
+| `0x40` | 64 | `0x40` | Undefined | Unknown |
+| `0x41` | 65 | `0x01` | Undefined | Unknown |
+| `0x42` | 66 | `0x1B` | Undefined | Unknown |
+| `0x43` | 67 | `0x81` | Undefined | Unknown |
+| `0x44` | 68 | `0xEA` | Undefined | Unknown |
+| `0x45` | 69 | `0x55` | Undefined | Unknown |
+| `0x46` | 70 | `0x45` | Undefined | Unknown |
+| `0x47` | 71 | `0x4C` | Undefined | Unknown |
+| `0x48` | 72 | `0x50` | Undefined | Unknown |
+| `0x49` | 73 | `0x23` | Undefined | Unknown |
+| `0x4A` | 74 | `0x95` | Undefined | Unknown |
+| `0x4B` | 75 | `0x00` | Undefined | Unknown |
+| `0x4C` | 76 | `0x6D` | Undefined | Unknown |
+| `0x4D` | 77 | `0x0A` | Undefined | Unknown |
+| `0x4E` | 78 | `0x08` | Undefined | Unknown |
+| `0x4F` | 79 | `0x04` | Undefined | Unknown |
+| `0x50` | 80 | `0x0B` | Undefined | Unknown |
+| `0x51` | 81 | `0x04` | Undefined | Unknown |
+| `0x52` | 82 | `0x04` | Undefined | Unknown |
+| `0x53` | 83 | `0x00` | Undefined | Unknown |
+| `0x54` | 84 | `0x00` | Undefined | Unknown |
+| `0x55` | 85 | `0x03` | Undefined | Unknown |
+| `0x56` | 86 | `0x80` | Undefined | Unknown |
+| `0x57` | 87 | `0x06` | Undefined | Unknown |
+| `0x58` | 88 | `0x1D` | Undefined | Unknown |
+| `0x59` | 89 | `0x07` | Undefined | Unknown |
+| `0x5A` | 90 | `0x1B` | Undefined | Unknown |
+| `0x5B` | 91 | `0xF0` | Undefined | Unknown |
+| `0x5C` | 92 | `0x10` | Undefined | Unknown |
+| `0x5D` | 93 | `0x02` | Undefined | Unknown |
+| `0x5E` | 94 | `0x00` | Undefined | Unknown |
+| `0x5F` | 95 | `0xAA` | Undefined | Unknown |
+| `0x60` | 96 | `0x7E` | Undefined | Unknown |
+| `0x61` | 97 | `0x3F` | **Defined** | Event State C (RegExpB0EventStateC) |
+| `0x62` | 98 | `0x5F` | Undefined | Unknown |
+| `0x63` | 99 | `0x00` | Undefined | Unknown |
+| `0x64` | 100 | `0x20` | Undefined | Unknown |
+| `0x65` | 101 | `0x1F` | Undefined | Unknown |
+| `0x66` | 102 | `0x2A` | Undefined | Unknown |
+| `0x67` | 103 | `0xC6` | Undefined | Unknown |
+| `0x68` | 104 | `0xEA` | Undefined | Unknown |
+| `0x69` | 105 | `0xC6` | Undefined | Unknown |
+| `0x6A` | 106 | `0x00` | Undefined | Unknown |
+| `0x6B` | 107 | `0x00` | **Defined** | Event State A (RegExpB0EventStateA) |
+| `0x6C` | 108 | `0x05` | **Defined** | Event State B (RegExpB0EventStateB) |
+| `0x6D` | 109 | `0xA0` | Undefined | Unknown |
+| `0x6E` | 110 | `0x00` | Undefined | Unknown |
+| `0x6F` | 111 | `0x00` | Undefined | Unknown |
+| `0x70` | 112 | `0x00` | Undefined | Unknown |
+| `0x71` | 113 | `0x00` | Undefined | Unknown |
+| `0x72` | 114 | `0x00` | Undefined | Unknown |
+| `0x73` | 115 | `0x00` | Undefined | Unknown |
+| `0x74` | 116 | `0x00` | Undefined | Unknown |
+| `0x75` | 117 | `0x00` | Undefined | Unknown |
+| `0x76` | 118 | `0x00` | Undefined | Unknown |
+| `0x77` | 119 | `0x00` | Undefined | Unknown |
+| `0x78` | 120 | `0x00` | Undefined | Unknown |
+| `0x79` | 121 | `0x00` | Undefined | Unknown |
+| `0x7A` | 122 | `0x00` | Undefined | Unknown |
+| `0x7B` | 123 | `0x00` | Undefined | Unknown |
+| `0x7C` | 124 | `0x00` | Undefined | Unknown |
+| `0x7D` | 125 | `0x00` | Undefined | Unknown |
+| `0x7E` | 126 | `0x00` | Undefined | Unknown |
+| `0x7F` | 127 | `0x00` | Undefined | Unknown |
+
+### 10.2 Bank 1
+
+Defined in code: 16 / 128 (Assumed/Inferred: 48 / 128)
+
+| Reg (Hex) | Dec | Default (`sample-01`) | Status | Function / Role |
+|---|---|---|---|---|
+| `0x00` | 0 | `0x8C` | Undefined | Unknown |
+| `0x01` | 1 | `0x80` | **Defined** | RGB Speed (RegRGBSpeed) |
+| `0x02` | 2 | `0x43` | **Defined** | DPI 1 (RegDPI1) |
+| `0x03` | 3 | `0x07` | **Defined** | DPI 2 (RegDPI2) |
+| `0x04` | 4 | `0x4B` | **Defined** | DPI 3 (RegDPI3) |
+| `0x05` | 5 | `0xAF` | **Defined** | DPI 4 (RegDPI4) |
+| `0x06` | 6 | `0x27` | **Defined** | DPI 5 (RegDPI5) |
+| `0x07` | 7 | `0x6F` | **Defined** | DPI 6 (RegDPI6) |
+| `0x08` | 8 | `0x43` | Undefined | Unknown |
+| `0x09` | 9 | `0x20` | **Defined** | DPI Select (RegDPISelect) |
+| `0x0A` | 10 | `0x01` | **Defined** | RGB Mode (RegRGBMode) |
+| `0x0B` | 11 | `0xE8` | **Defined** | CPI Button (RegCPIButton) |
+| `0x0C` | 12 | `0x45` | Undefined | Unknown |
+| `0x0D` | 13 | `0x24` | Undefined | Unknown |
+| `0x0E` | 14 | `0x82` | **Defined** | Rate (RegRate) |
+| `0x0F` | 15 | `0x23` | Undefined | Unknown |
+| `0x10` | 16 | `0x4B` | Undefined | Unknown |
+| `0x11` | 17 | `0x07` | Undefined | Unknown |
+| `0x12` | 18 | `0x33` | Undefined | Unknown |
+| `0x13` | 19 | `0x25` | Undefined | Unknown |
+| `0x14` | 20 | `0x3A` | Undefined | Unknown |
+| `0x15` | 21 | `0x09` | Undefined | Unknown |
+| `0x16` | 22 | `0xFF` | Undefined | Unknown |
+| `0x17` | 23 | `0xFF` | Undefined | Unknown |
+| `0x18` | 24 | `0xFF` | Undefined | Unknown |
+| `0x19` | 25 | `0xFF` | Undefined | Unknown |
+| `0x1A` | 26 | `0xFF` | Undefined | Unknown |
+| `0x1B` | 27 | `0xFF` | Undefined | Unknown |
+| `0x1C` | 28 | `0xFF` | Undefined | Unknown |
+| `0x1D` | 29 | `0xEF` | **Defined** | Sensor ID (RegSensorID) |
+| `0x1E` | 30 | `0x24` | Undefined | Unknown |
+| `0x1F` | 31 | `0x0D` | Undefined | Unknown |
+| `0x20` | 32 | `0x58` | Undefined | Unknown |
+| `0x21` | 33 | `0xAC` | Undefined | Unknown |
+| `0x22` | 34 | `0x13` | Undefined | Unknown |
+| `0x23` | 35 | `0x00` | Undefined | Unknown |
+| `0x24` | 36 | `0x00` | Undefined | Unknown |
+| `0x25` | 37 | `0x00` | Undefined | Unknown |
+| `0x26` | 38 | `0x00` | Undefined | Unknown |
+| `0x27` | 39 | `0x00` | Undefined | Unknown |
+| `0x28` | 40 | `0x00` | **Defined** | Buttons Mask (RegExpB1ButtonsMask) |
+| `0x29` | 41 | `0x00` | Undefined | Unknown |
+| `0x2A` | 42 | `0x1E` | **Defined** | Buttons State A (RegExpB1ButtonsStateA) |
+| `0x2B` | 43 | `0x11` | **Defined** | Buttons State B (RegExpB1ButtonsStateB) |
+| `0x2C` | 44 | `0x00` | Undefined | Unknown |
+| `0x2D` | 45 | `0x08` | Undefined | Unknown |
+| `0x2E` | 46 | `0x0B` | Undefined | Unknown |
+| `0x2F` | 47 | `0x13` | Undefined | Unknown |
+| `0x30` | 48 | `0x02` | *Inferred* | RGB Palette Entry 0 - Component 1 |
+| `0x31` | 49 | `0x62` | *Inferred* | RGB Palette Entry 0 - Component 2 |
+| `0x32` | 50 | `0x55` | *Inferred* | RGB Palette Entry 0 - Component 3 |
+| `0x33` | 51 | `0x1F` | *Inferred* | RGB Palette Entry 1 - Component 1 |
+| `0x34` | 52 | `0x4C` | *Inferred* | RGB Palette Entry 1 - Component 2 |
+| `0x35` | 53 | `0x0A` | *Inferred* | RGB Palette Entry 1 - Component 3 |
+| `0x36` | 54 | `0x20` | *Inferred* | RGB Palette Entry 2 - Component 1 |
+| `0x37` | 55 | `0x80` | *Inferred* | RGB Palette Entry 2 - Component 2 |
+| `0x38` | 56 | `0x00` | *Inferred* | RGB Palette Entry 2 - Component 3 |
+| `0x39` | 57 | `0xAA` | *Inferred* | RGB Palette Entry 3 - Component 1 |
+| `0x3A` | 58 | `0x12` | *Inferred* | RGB Palette Entry 3 - Component 2 |
+| `0x3B` | 59 | `0x24` | *Inferred* | RGB Palette Entry 3 - Component 3 |
+| `0x3C` | 60 | `0x50` | *Inferred* | RGB Palette Entry 4 - Component 1 |
+| `0x3D` | 61 | `0x7F` | *Inferred* | RGB Palette Entry 4 - Component 2 |
+| `0x3E` | 62 | `0xFA` | *Inferred* | RGB Palette Entry 4 - Component 3 |
+| `0x3F` | 63 | `0xDE` | *Inferred* | RGB Palette Entry 5 - Component 1 |
+| `0x40` | 64 | `0x58` | *Inferred* | RGB Palette Entry 5 - Component 2 |
+| `0x41` | 65 | `0xA0` | *Inferred* | RGB Palette Entry 5 - Component 3 |
+| `0x42` | 66 | `0x3C` | *Inferred* | RGB Palette Entry 6 - Component 1 |
+| `0x43` | 67 | `0x08` | *Inferred* | RGB Palette Entry 6 - Component 2 |
+| `0x44` | 68 | `0xC8` | *Inferred* | RGB Palette Entry 6 - Component 3 |
+| `0x45` | 69 | `0x00` | *Inferred* | RGB Palette Entry 7 - Component 1 |
+| `0x46` | 70 | `0x01` | *Inferred* | RGB Palette Entry 7 - Component 2 |
+| `0x47` | 71 | `0x64` | *Inferred* | RGB Palette Entry 7 - Component 3 |
+| `0x48` | 72 | `0x01` | *Inferred* | RGB Palette Entry 8 - Component 1 |
+| `0x49` | 73 | `0xA0` | *Inferred* | RGB Palette Entry 8 - Component 2 |
+| `0x4A` | 74 | `0x55` | *Inferred* | RGB Palette Entry 8 - Component 3 |
+| `0x4B` | 75 | `0x77` | *Inferred* | RGB Palette Entry 9 - Component 1 |
+| `0x4C` | 76 | `0xBB` | *Inferred* | RGB Palette Entry 9 - Component 2 |
+| `0x4D` | 77 | `0x77` | *Inferred* | RGB Palette Entry 9 - Component 3 |
+| `0x4E` | 78 | `0x11` | *Inferred* | RGB Palette Entry 10 - Component 1 |
+| `0x4F` | 79 | `0x50` | *Inferred* | RGB Palette Entry 10 - Component 2 |
+| `0x50` | 80 | `0x87` | *Inferred* | RGB Palette Entry 10 - Component 3 |
+| `0x51` | 81 | `0x25` | *Inferred* | RGB Palette Entry 11 - Component 1 |
+| `0x52` | 82 | `0x80` | *Inferred* | RGB Palette Entry 11 - Component 2 |
+| `0x53` | 83 | `0xEB` | *Inferred* | RGB Palette Entry 11 - Component 3 |
+| `0x54` | 84 | `0x3F` | *Inferred* | RGB Palette Entry 12 - Component 1 |
+| `0x55` | 85 | `0x77` | *Inferred* | RGB Palette Entry 12 - Component 2 |
+| `0x56` | 86 | `0x47` | *Inferred* | RGB Palette Entry 12 - Component 3 |
+| `0x57` | 87 | `0xE7` | *Inferred* | RGB Palette Entry 13 - Component 1 |
+| `0x58` | 88 | `0x0C` | *Inferred* | RGB Palette Entry 13 - Component 2 |
+| `0x59` | 89 | `0x0C` | *Inferred* | RGB Palette Entry 13 - Component 3 |
+| `0x5A` | 90 | `0x00` | *Inferred* | RGB Palette Entry 14 - Component 1 |
+| `0x5B` | 91 | `0x17` | *Inferred* | RGB Palette Entry 14 - Component 2 |
+| `0x5C` | 92 | `0x18` | *Inferred* | RGB Palette Entry 14 - Component 3 |
+| `0x5D` | 93 | `0x8C` | *Inferred* | RGB Palette Entry 15 - Component 1 |
+| `0x5E` | 94 | `0x00` | *Inferred* | RGB Palette Entry 15 - Component 2 |
+| `0x5F` | 95 | `0x00` | *Inferred* | RGB Palette Entry 15 - Component 3 |
+| `0x60` | 96 | `0x00` | Undefined | Unknown |
+| `0x61` | 97 | `0x00` | Undefined | Unknown |
+| `0x62` | 98 | `0x08` | Undefined | Unknown |
+| `0x63` | 99 | `0x00` | Undefined | Unknown |
+| `0x64` | 100 | `0x40` | Undefined | Unknown |
+| `0x65` | 101 | `0x00` | Undefined | Unknown |
+| `0x66` | 102 | `0x60` | Undefined | Unknown |
+| `0x67` | 103 | `0xB0` | Undefined | Unknown |
+| `0x68` | 104 | `0xBB` | Undefined | Unknown |
+| `0x69` | 105 | `0x00` | Undefined | Unknown |
+| `0x6A` | 106 | `0x50` | Undefined | Unknown |
+| `0x6B` | 107 | `0xBB` | Undefined | Unknown |
+| `0x6C` | 108 | `0x00` | Undefined | Unknown |
+| `0x6D` | 109 | `0x00` | Undefined | Unknown |
+| `0x6E` | 110 | `0x00` | Undefined | Unknown |
+| `0x6F` | 111 | `0x10` | Undefined | Unknown |
+| `0x70` | 112 | `0x6C` | Undefined | Unknown |
+| `0x71` | 113 | `0x01` | Undefined | Unknown |
+| `0x72` | 114 | `0x02` | Undefined | Unknown |
+| `0x73` | 115 | `0x6D` | Undefined | Unknown |
+| `0x74` | 116 | `0x57` | Undefined | Unknown |
+| `0x75` | 117 | `0x16` | **Defined** | Event State (RegExpB1EventState) |
+| `0x76` | 118 | `0x80` | Undefined | Unknown |
+| `0x77` | 119 | `0xA4` | Undefined | Unknown |
+| `0x78` | 120 | `0x00` | Undefined | Unknown |
+| `0x79` | 121 | `0xCC` | Undefined | Unknown |
+| `0x7A` | 122 | `0xCC` | Undefined | Unknown |
+| `0x7B` | 123 | `0x74` | Undefined | Unknown |
+| `0x7C` | 124 | `0xFF` | Undefined | Unknown |
+| `0x7D` | 125 | `0xFF` | Undefined | Unknown |
+| `0x7E` | 126 | `0x7F` | Undefined | Unknown |
+| `0x7F` | 127 | `0x01` | Undefined | Unknown |
