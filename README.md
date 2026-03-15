@@ -1,73 +1,75 @@
 # rtt3168ctl
 
-CLI utility for controlling a USB mouse based on the **RTT3168CG2** chip via vendor control transfers.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Supported features:
-- read current mouse status;
-- configure DPI profiles;
-- switch active DPI slot;
-- configure RGB mode and animation speed;
-- change polling rate;
-- bind an action to the CPI button;
-- raw register dump/write (advanced).
+A CLI utility for controlling a USB mouse based on the **RTT3168CG2** chip via vendor control transfers. This project provides a native command-line interface to read device status, configure DPI and RGB lighting, and perform advanced register-level diagnostics.
 
-## Requirements
+## Features
 
-- Go 1.25+
-- Linux
-- USB device access (root permissions or udev rules may be required)
+- **Status Reading:** Instantly read the current configuration and status of your mouse.
+- **DPI Management:** Configure single or multiple DPI profiles and seamlessly switch the active DPI slot.
+- **RGB Customization:** Change RGB lighting modes, pick specific colors, and adjust animation speeds.
+- **Performance Tuning:** Change the mouse polling rate (`125`, `250`, `500`, or `1000` Hz).
+- **Button Binding:** Bind custom actions to the CPI button.
+- **Advanced Diagnostics:** Dump raw unique registers from banks or write raw byte values directly to registers.
+- **Experimental Mode:** Stream inferred runtime/event registers in a loop for reverse-engineering and monitoring.
 
-`rtt3168ctl` uses `gousb`, which depends on `libusb-1.0`.
+## Getting Started
 
-Install `libusb`:
+### Prerequisites
 
+- **OS:** Linux
+- **Go:** Version 1.25+
+- **Permissions:** USB device access (root permissions or udev rules may be required).
+
+### Installation (Dependencies)
+
+`rtt3168ctl` uses the `gousb` package, which requires `libusb-1.0` to be installed on your system.
+
+**Debian / Ubuntu:**
 ```bash
-# Debian / Ubuntu
 sudo apt update
 sudo apt install -y libusb-1.0-0-dev
+```
 
-# Arch Linux
+**Arch Linux:**
+```bash
 sudo pacman -S libusb
 ```
 
-## Build
+## Usage
 
-```bash
-make build
-```
+### Main Parameters
 
-The binary will be available at `build/rtt3168ctl`.
+You can pass various flags to customize the command behavior:
 
-## Modes (`-mode`)
+- **Slots & DPI:**
+  - `-slot` - slot used by `-dpi` and `-switch-slot` (`1-4`)
+  - `-dpi` - single-slot DPI value as `DPI` or `DPI:color` (e.g., `800` or `800:1`)
+  - `-color` - with `-dpi`: color index (`0-15`), `-1` = keep current
+  - `-switch-slot` - with `-dpi/-slot`: activate this slot after write
+  - `-dpi1..-dpi4` - slot value as `DPI` or `DPI:color` (e.g., `800` or `800:3`)
+  - `-color1..-color4` - color for each slot (`0-15`), `-1` = keep current
+  - `-active-slot` - activate slot (`1-4`) after applying settings
+- **RGB & Performance:**
+  - `-speed` - RGB speed (`0-255`), `-1` = keep current
+  - `-rgb-mode` - RGB mode value (`off`, `on`, `breath`, `breath_segment`, `cycle6`, `cycle12`, `cycle768`)
+  - `-rate` - polling rate (`125/250/500/1000`)
+  - `-cpi-action` - CPI action value
+- **Advanced / Output:**
+  - `-json` - JSON output for `-mode read`
+  - `-reg`, `-regval` - raw values for `write`
+  - `-dump-banks` - banks to read in `dump` mode (`0,1`, `0-7`, or `all`)
+  - `-exp-interval-ms` - poll interval for `experimental` mode (`>0`, default `20`)
+  - `-exp-count` - number of printed samples in `experimental` mode (`0` = infinite)
+  - `-exp-all` - print every sample in `experimental` mode (default: only changes)
 
-- `read` - read current configuration
-- `apply` - apply one or more settings
-- `dump` - dump raw unique registers from one or more banks (0..127 per bank; `+0x80` is mirrored)
-- `write` - raw register write (advanced)
-- `experimental` - stream inferred runtime/event registers in a loop (advanced)
+---
 
-## Main Parameters
+### Operating Modes (`-mode`)
 
-- `-slot` - slot used by `-dpi` and `-switch-slot` (`1-4`)
-- `-dpi` - single-slot DPI value as `DPI` or `DPI:color` (e.g. `800` or `800:1`)
-- `-color` - with `-dpi`: color index (`0-15`), `-1` = keep current
-- `-switch-slot` - with `-dpi/-slot`: activate this slot after write
-- `-dpi1..-dpi4` - slot value as `DPI` or `DPI:color` (e.g. `800` or `800:3`)
-- `-color1..-color4` - color for each slot (`0..15`), `-1` = keep current
-- `-active-slot` - activate slot (`1-4`) after applying settings
-- `-speed` - RGB speed (`0-255`), `-1` = keep current
-- `-json` - JSON output for `-mode read`
-- `-reg`, `-regval` - raw values for `write`
-- `-dump-banks` - banks to read in `dump` mode (`0,1`, `0-7`, or `all`)
-- `-rate` - polling rate (`125/250/500/1000`)
-- `-rgb-mode` - RGB mode value
-- `-cpi-action` - CPI action value
-- `-exp-interval-ms` - poll interval for `experimental` mode (`>0`, default `20`)
-- `-exp-count` - number of printed samples in `experimental` mode (`0` = infinite)
-- `-exp-all` - print every sample in `experimental` mode (default: only changes)
-
-### `-mode read`
-Read current device settings.
+#### Read Settings (`-mode read`)
+Read the current device settings.
 
 Human-readable output:
 ```bash
@@ -79,15 +81,15 @@ JSON output:
 ./build/rtt3168ctl -mode read -json
 ```
 
-### `-mode apply`
-Apply several settings in one run, for example from cron/startup scripts:
+#### Apply Settings (`-mode apply`)
+Apply several settings in one run. Ideal for cron jobs or startup scripts.
 
-Single-slot shortcut:
+**Single-slot shortcut:**
 ```bash
 ./build/rtt3168ctl -mode apply -dpi 800:1 -slot 1 -switch-slot
 ```
 
-Full profile:
+**Full profile configuration:**
 ```bash
 ./build/rtt3168ctl -mode apply \
   -dpi1 800:3 \
@@ -99,147 +101,95 @@ Full profile:
   -rgb-mode breath -speed 40 \
   -cpi-action vol_up
 ```
+*Note: You can still use `-color1..-color4` separately; if both are set, values must match.*
 
-Supported `-rgb-mode` values:
-- `off`
-- `on`
-- `breath`
-- `breath_segment`
-- `cycle6`
-- `cycle12`
-- `cycle768`
-
-You can still use `-color1..-color4` separately; if both are set, values must match.
-
-### `-mode dump`
-Dump raw register values from one or more banks (unique registers `0..127` for each bank).
-By default the tool reads banks `0` and `1`.
+#### Dump Registers (`-mode dump`)
+Dump raw register values from one or more banks (unique registers `0..127` for each bank; `+0x80` is mirrored). By default, the tool reads banks `0` and `1`.
 
 ```bash
 ./build/rtt3168ctl -mode dump
 ```
 
 Probe additional candidate banks:
-
 ```bash
 ./build/rtt3168ctl -mode dump -dump-banks 0-7
 ```
 
-### `-mode write`
-Write a raw byte to a register (advanced diagnostics):
+#### Write Registers (`-mode write`)
+Write a raw byte to a specific register (for advanced diagnostics):
 
 ```bash
 ./build/rtt3168ctl -mode write -reg 14 -regval 2
 ```
 
-### `-mode experimental`
-Read inferred runtime/event registers in a loop.
-By default it prints only changed samples, updates one console line in place,
-and runs until `Ctrl+C`.
+#### Experimental Monitoring (`-mode experimental`)
+Stream inferred runtime/event registers in a loop. By default, it updates one console line in place, printing only changed samples until `Ctrl+C` is pressed.
 
 ```bash
 ./build/rtt3168ctl -mode experimental
 ```
 
-JSON lines, fixed number of samples:
-
+Output as JSON lines for a fixed number of samples:
 ```bash
 ./build/rtt3168ctl -mode experimental -json -exp-all -exp-interval-ms 100 -exp-count 50
 ```
 
-## Guided Unknown-Register Experiment
-
-Use this interactive script to investigate registers not documented in `SPEC.md`.
-It guides you through movement/click/scroll/button actions and reports only
-unknown-register changes relative to an idle baseline.
-
-```bash
-./scripts/unknown-register-experiment.sh
-```
-
-Optional parameters:
-
-```bash
-./scripts/unknown-register-experiment.sh \
-  --samples 10 \
-  --duration 8 \
-  --out ./experiments/session-01 \
-  --bin ./build/rtt3168ctl
-```
-
-To inspect candidate banks added via `-dump-banks`, use:
-
-```bash
-./scripts/bank-survey.sh --banks 0-15
-```
-
-The script captures several dumps and summarizes:
-- volatile registers;
-- stable non-trivial values (`!= 0x00` and `!= 0xFF`);
-- groups of banks with identical snapshots.
-
-To check which banks react to movement/buttons at runtime, use:
-
-```bash
-./scripts/bank-action-survey.sh --banks 0,1,2,7,128,133,147,255
-```
-
-It captures guided action steps and writes both:
-- per-step diffs vs baseline;
-- idle-filtered action-specific activity.
-
-To reduce `bank-action` output to a practical register shortlist, use:
-
-```bash
-./scripts/bank-action-shortlist.sh
-```
-
-It creates:
-- a per-bank shortlist;
-- a cross-bank core shortlist;
-- single-bank specialists (for example button-only bank views).
-
 ## Device IDs and udev Rules
 
-Defaults:
+By default, the utility targets:
 - `VID = 0x093A`
 - `PID = 0x2533`
 
-Override example:
-
+**Override example:**
+If your mouse uses a different VID/PID, you can override the defaults using environment variables:
 ```bash
 MOUSE_VID=0x093A MOUSE_PID=0x2533 ./build/rtt3168ctl -mode read
 ```
 
-Example udev rules (`52-rtt3168ctl-093a-2533.rules`):
+**Configuring udev rules:**
+To run the utility without `root` permissions, create a udev rule file (`/etc/udev/rules.d/52-rtt3168ctl-093a-2533.rules`):
 
 ```udev
 SUBSYSTEM=="usb", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
 KERNEL=="hidraw*", ATTRS{busnum}=="1", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
 ```
 
-Apply the rule:
-
+Apply the rule and trigger it (or reboot/replug the mouse):
 ```bash
 sudo udevadm control --reload-rules
 sudo udevadm trigger --subsystem-match=usb
 sudo udevadm trigger --subsystem-match=hidraw
 ```
 
-Replug the mouse (or reboot).
+## Building from Source
 
-## Useful Make Commands
+To compile the binary yourself:
+
+1. Clone the repository and navigate to the project directory.
+2. Build the project using `make`:
+   ```bash
+   make build
+   ```
+   *The compiled binary will be available at `build/rtt3168ctl`.*
+
+### Useful Make Commands
+
+A `Makefile` is provided to simplify common development tasks:
 
 ```bash
-make help
-make build
-make run ARGS='-mode read'
-make test
-make fmt
-make vet
-make clean
+make help          # Show available commands
+make build         # Compile the project into build/
+make run ARGS='-mode read' # Run the project on the fly
+make test          # Run tests
+make fmt           # Format Go source code
+make vet           # Run go vet
+make clean         # Remove build artifacts
 ```
 
-## Note
+## Contributing
 
-`write` and `dump` are intended for low-level diagnostics. Invalid register values may cause unpredictable device behavior.
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/AzaOne/rtt3168ctl/issues).
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
