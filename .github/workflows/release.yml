@@ -63,7 +63,8 @@ jobs:
           fi
           BIN_NAME="rtt3168ctl-${GOOS}-${GOARCH}"
           mkdir -p dist
-          go build -trimpath -ldflags "-s -w" -o "dist/${BIN_NAME}" ./cmd/rtt3168ctl
+          ./build.sh -ldflags "-s -w"
+          cp build/rtt3168ctl "dist/${BIN_NAME}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

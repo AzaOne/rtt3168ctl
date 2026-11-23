@@ -14,7 +14,6 @@ type SlotStatus struct {
 	Active bool
 }
 
-
 type Status struct {
 	SensorID   uint8
 	ActiveSlot int
@@ -121,7 +120,6 @@ func (s *Service) ReadStatus() (Status, error) {
 		CPIRaw:     cpiVal,
 	}, nil
 }
-
 
 func (s *Service) DumpRegisters(start, end uint16) ([]RegisterValue, error) {
 	if end < start {

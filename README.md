@@ -37,6 +37,17 @@ sudo apt install -y libusb-1.0-0-dev
 sudo pacman -S libusb
 ```
 
+### Install the CLI
+
+From the repository, run as your regular user:
+
+```bash
+./build.sh
+./install.sh --user
+```
+
+This builds the native binary and installs it in `~/.local/bin`. Add that directory to your `PATH` to run `rtt3168ctl` from any directory. Rerun both commands after updating the source.
+
 ## Usage
 
 ### Main Parameters
@@ -147,44 +158,25 @@ MOUSE_VID=0x093A MOUSE_PID=0x2533 ./build/rtt3168ctl -mode read
 ```
 
 **Configuring udev rules:**
-To run the utility without `root` permissions, create a udev rule file (`/etc/udev/rules.d/52-rtt3168ctl-093a-2533.rules`):
+To install the CLI and the bundled rule for `093a:2533`, run:
 
-```udev
-SUBSYSTEM=="usb", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
-KERNEL=="hidraw*", ATTRS{busnum}=="1", ATTRS{idVendor}=="093a", ATTRS{idProduct}=="2533", MODE="0666"
-```
-
-Apply the rule and trigger it (or reboot/replug the mouse):
 ```bash
-sudo udevadm control --reload-rules
-sudo udevadm trigger --subsystem-match=usb
-sudo udevadm trigger --subsystem-match=hidraw
+./build.sh
+./install.sh --user --udev
 ```
+
+The installer uses `sudo` to copy the rule to `/etc/udev/rules.d/` and reload udev. Reconnect the mouse afterward. The rule grants all local users read/write access to matching device nodes.
 
 ## Building from Source
 
-To compile the binary yourself:
+Run `./build.sh` from the checkout. It performs the same checks used by CI and release builds:
 
-1. Clone the repository and navigate to the project directory.
-2. Build the project using `make`:
-   ```bash
-   make build
-   ```
-   *The compiled binary will be available at `build/rtt3168ctl`.*
+1. `gofmt -l cmd internal` lists files that need formatting and the script stops if any are found. Run `go fmt ./...` to format them.
+2. `go mod verify` checks downloaded dependencies.
+3. `go vet ./...` analyzes the target code.
+4. `go test -race ./...` runs the hardware-independent tests on the build host.
 
-### Useful Make Commands
-
-A `Makefile` is provided to simplify common development tasks:
-
-```bash
-make help          # Show available commands
-make build         # Compile the project into build/
-make run ARGS='-mode read' # Run the project on the fly
-make test          # Run tests
-make fmt           # Format Go source code
-make vet           # Run go vet
-make clean         # Remove build artifacts
-```
+After these checks pass, the script writes `build/rtt3168ctl`. It accepts Go build flags, for example `./build.sh -ldflags="-s -w"`. For cross-builds, the host needs race-detector support and native libusb development files in addition to the target toolchain and libraries.
 
 ## Contributing
 
