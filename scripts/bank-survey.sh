@@ -13,7 +13,7 @@ Usage:
   scripts/bank-survey.sh [options]
 
 Options:
-  --banks <spec>       Bank spec for -dump-banks (default: 0-7)
+  --banks <spec>       Bank spec for --dump-banks (default: 0-7)
   --samples <n>        Number of dumps to capture (default: 5)
   --interval <sec>     Delay between dumps in seconds (default: 0.20)
   --out <dir>          Output directory (default: experiments/bank-survey-<timestamp>)
@@ -96,13 +96,13 @@ mkdir -p "$OUT_DIR/raw" "$OUT_DIR/parsed" "$OUT_DIR/summary"
 run_dump() {
 	local out_file="$1"
 	if [[ -n "$BIN_PATH" ]]; then
-		"$BIN_PATH" -mode dump -dump-banks "$BANK_SPEC" >"$out_file"
+		"$BIN_PATH" --mode dump --dump-banks "$BANK_SPEC" >"$out_file"
 		return
 	fi
 
 	(
 		cd "$ROOT_DIR"
-		go run ./cmd/rtt3168ctl -mode dump -dump-banks "$BANK_SPEC"
+		go run ./cmd/rtt3168ctl --mode dump --dump-banks "$BANK_SPEC"
 	) >"$out_file"
 }
 

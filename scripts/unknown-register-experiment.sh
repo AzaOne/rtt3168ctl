@@ -96,13 +96,13 @@ mkdir -p "$OUT_DIR/raw" "$OUT_DIR/parsed" "$OUT_DIR/summary"
 run_dump() {
 	local out_file="$1"
 	if [[ -n "$BIN_PATH" ]]; then
-		"$BIN_PATH" -mode dump >"$out_file"
+		"$BIN_PATH" --mode dump >"$out_file"
 		return
 	fi
 
 	(
 		cd "$ROOT_DIR"
-		go run ./cmd/rtt3168ctl -mode dump
+		go run ./cmd/rtt3168ctl --mode dump
 	) >"$out_file"
 }
 

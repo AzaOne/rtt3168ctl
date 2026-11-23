@@ -13,17 +13,17 @@ import (
 func main() {
 	logger := logging.New(os.Stderr)
 
-	cfg, err := config.LoadFromEnv()
-	if err != nil {
-		logger.Fatalf("configuration error: %v", err)
-	}
-
-	cmd, shouldExit, err := cli.Parse(os.Args[1:], os.Args[0], os.Stderr)
+	cmd, shouldExit, err := cli.Parse(os.Args[1:], os.Args[0], os.Stdout, os.Stderr)
 	if err != nil {
 		logger.Fatalf("CLI parse error: %v", err)
 	}
 	if shouldExit {
 		return
+	}
+
+	cfg, err := config.LoadFromEnv()
+	if err != nil {
+		logger.Fatalf("configuration error: %v", err)
 	}
 
 	app := facade.New(kernel.New(cfg, logger))

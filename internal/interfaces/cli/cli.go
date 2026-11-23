@@ -5,21 +5,25 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"rtt3168ctl/internal/facade"
 )
 
-func Parse(args []string, binName string, errOut io.Writer) (facade.Command, bool, error) {
+var buildVersion = "dev"
+
+func Parse(args []string, binName string, out, errOut io.Writer) (facade.Command, bool, error) {
 	fs := flag.NewFlagSet(binName, flag.ContinueOnError)
 	fs.SetOutput(errOut)
 
+	version := fs.Bool("version", false, "Print the build version and exit")
 	modePtr := fs.String("mode", "", "Operation mode")
 	dpiSlotPtr := fs.Int("slot", 1, "Target DPI slot (1-4)")
-	dpiPtr := fs.String("dpi", "", "Value for -slot as DPI or DPI:Color (e.g. 800 or 800:1)")
-	colorIdxPtr := fs.Int("color", -1, "In 'apply' mode with -dpi: color index for -slot (0-15)")
-	switchSlotPtr := fs.Bool("switch-slot", false, "In 'apply' mode with -dpi/-slot: also activate target slot")
+	dpiPtr := fs.String("dpi", "", "Value for --slot as DPI or DPI:Color (e.g. 800 or 800:1)")
+	colorIdxPtr := fs.Int("color", -1, "In 'apply' mode with --dpi: color index for --slot (0-15)")
+	switchSlotPtr := fs.Bool("switch-slot", false, "In 'apply' mode with --dpi/--slot: also activate target slot")
 	rgbSpeedPtr := fs.Int("speed", -1, "RGB Animation Speed (0-255)")
 	dpi1Ptr := fs.String("dpi1", "", "Slot 1 value as DPI or DPI:Color (e.g. 800 or 800:3)")
 	dpi2Ptr := fs.String("dpi2", "", "Slot 2 value as DPI or DPI:Color (e.g. 1200 or 1200:5)")
@@ -42,7 +46,7 @@ func Parse(args []string, binName string, errOut io.Writer) (facade.Command, boo
 	expAllPtr := fs.Bool("exp-all", false, "In 'experimental' mode print every sample, not only changes")
 
 	fs.Usage = func() {
-		helpText := fmt.Sprintf(`Usage: %s -mode <command> [options]
+		helpText := fmt.Sprintf(`Usage: %s --mode <command> [options]
 		
 Commands:
   read      Read current hardware configuration
@@ -52,86 +56,103 @@ Commands:
   experimental  Read inferred runtime/event registers in a loop (Advanced)
 
 Options:
-  -mode string
+  -h, --help
+        Show this help
+  --version
+        Print the build version and exit
+  --mode string
         Operation mode (required)
-  -dpi string
-        Value for -slot as DPI or DPI:Color (e.g. 800 or 800:1)
-  -slot int
-        Target slot for -dpi and -switch-slot (1-4) (default 1)
-  -color int
-        With -dpi: color index for -slot (0-15). -1 keeps current. (default -1)
-  -switch-slot
-     	With -dpi/-slot, also activate target DPI slot
-  -speed int
+  --dpi string
+        Value for --slot as DPI or DPI:Color (e.g. 800 or 800:1)
+  --slot int
+        Target slot for --dpi and --switch-slot (1-4) (default 1)
+  --color int
+        With --dpi: color index for --slot (0-15). -1 keeps current. (default -1)
+  --switch-slot
+        With --dpi/--slot, also activate target DPI slot
+  --speed int
         RGB Animation Speed (0-255). -1 keeps current. (default -1)
-  -dpi1..-dpi4 string
+  --dpi1..--dpi4 string
         Slot value as DPI or DPI:Color (e.g. 800 or 800:3). Empty/-1 skips.
-  -color1..-color4 int
+  --color1..--color4 int
         Color index per slot (0-15). -1 keeps current.
-  -active-slot int
+  --active-slot int
         Slot to activate (1-4). -1 skips.
-  -rate int
+  --rate int
         USB polling rate (125/250/500/1000). -1 skips.
-  -rgb-mode string
+  --rgb-mode string
         RGB mode (off/on/breath/breath_segment/cycle6/cycle12/cycle768)
-  -cpi-action string
+  --cpi-action string
         CPI action value
-  -json
+  --json
         JSON output for 'read' mode
-  -reg int
+  --reg int
         Register address for 'write' mode (default -1)
-  -regval int
+  --regval int
         Register value for 'write' mode (default -1)
-  -dump-banks string
+  --dump-banks string
         Banks for 'dump' mode: comma list, ranges, or 'all' (default "0,1")
-  -exp-interval-ms int
+  --exp-interval-ms int
         Poll interval in ms for 'experimental' mode (default 20)
-  -exp-count int
+  --exp-count int
         Number of printed samples in 'experimental' mode (0 = infinite, default 0)
-  -exp-all
+  --exp-all
         In 'experimental' mode, print every sample (default: print on change only)
 
 Arguments detail:
   [apply]
-    -dpi <value>          : Apply to one slot selected by -slot. Format: DPI or DPI:Color
-    -slot <1-4>           : Slot for -dpi and -switch-slot
-    -color <0-15>         : Optional color for -dpi (if not in -dpi value)
-    -switch-slot          : Activate -slot after applying -dpi
-    -dpi1..-dpi4 <value>  : DPI or DPI:Color for slots 1..4 (e.g. 800 or 800:3), empty/-1 = skip
-    -color1..-color4 <int>: Color for slots 1..4 (0..15), -1 = keep current
-    -active-slot <1-4>    : Slot to activate after applying
-    -rate <int>           : Polling rate (125/250/500/1000)
-    -rgb-mode <string>    : off, on, breath, breath_segment, cycle6, cycle12, cycle768
-    -speed <0-255>        : RGB speed (requires -rgb-mode)
-    -cpi-action <string>  : Same action values as in [cpi]
+    --dpi <value>          : Apply to one slot selected by --slot. Format: DPI or DPI:Color
+    --slot <1-4>           : Slot for --dpi and --switch-slot
+    --color <0-15>         : Optional color for --dpi (if not in --dpi value)
+    --switch-slot          : Activate --slot after applying --dpi
+    --dpi1..--dpi4 <value>  : DPI or DPI:Color for slots 1..4 (e.g. 800 or 800:3), empty/-1 = skip
+    --color1..--color4 <int>: Color for slots 1..4 (0..15), -1 = keep current
+    --active-slot <1-4>    : Slot to activate after applying
+    --rate <int>           : Polling rate (125/250/500/1000)
+    --rgb-mode <string>    : off, on, breath, breath_segment, cycle6, cycle12, cycle768
+    --speed <0-255>        : RGB speed (requires --rgb-mode)
+    --cpi-action <string>  : Same action values as in [cpi]
 
   [experimental]
-    -exp-interval-ms <n>  : Poll interval in milliseconds (default 20)
-    -exp-count <n>        : Number of printed samples; 0 = run until Ctrl+C
-    -exp-all              : Print every sample (default: only changed samples)
-    -json                 : JSON lines output (timestamp + sample)
+    --exp-interval-ms <n>  : Poll interval in milliseconds (default 20)
+    --exp-count <n>        : Number of printed samples; 0 = run until Ctrl+C
+    --exp-all              : Print every sample (default: only changed samples)
+    --json                 : JSON lines output (timestamp + sample)
 
   [dump]
-    -dump-banks <spec>    : Banks to read, e.g. 0,1 or 0-7 or all
+    --dump-banks <spec>    : Banks to read, e.g. 0,1 or 0-7 or all
 
 Examples:
-  %s -mode read
-  %s -mode read -json
-  %s -mode apply -dpi 800:1 -slot 1 -switch-slot
-  %s -mode apply -rgb-mode on -rate 1000 -cpi-action vol_up
-  %s -mode apply -dpi1 800:3 -dpi2 1200:5 -active-slot 2 -rate 1000 -rgb-mode breath -speed 40 -cpi-action vol_up
-  %s -mode dump -dump-banks 0-7
-  %s -mode experimental -exp-interval-ms 100
-  %s -mode experimental -json -exp-all -exp-count 50
+  %s --mode read
+  %s --mode read --json
+  %s --mode apply --dpi 800:1 --slot 1 --switch-slot
+  %s --mode apply --rgb-mode on --rate 1000 --cpi-action vol_up
+  %s --mode apply --dpi1 800:3 --dpi2 1200:5 --active-slot 2 --rate 1000 --rgb-mode breath --speed 40 --cpi-action vol_up
+  %s --mode dump --dump-banks 0-7
+  %s --mode experimental --exp-interval-ms 100
+  %s --mode experimental --json --exp-all --exp-count 50
 `, binName, binName, binName, binName, binName, binName, binName, binName, binName)
 		fmt.Fprint(errOut, helpText)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := parseOptions(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return facade.Command{}, true, nil
 		}
 		return facade.Command{}, false, err
+	}
+
+	if fs.NArg() != 0 {
+		return facade.Command{}, false, fmt.Errorf("unexpected argument %q", fs.Arg(0))
+	}
+
+	if *version {
+		v := buildVersion
+		if info, ok := debug.ReadBuildInfo(); ok && v == "dev" && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			v = info.Main.Version
+		}
+		_, err := fmt.Fprintln(out, "rtt3168ctl", v)
+		return facade.Command{}, true, err
 	}
 
 	if *modePtr == "" {
@@ -217,13 +238,13 @@ Examples:
 		slotIndex := *dpiSlotPtr - 1
 		if hasSingleDPI {
 			if cmd.DPI[slotIndex] >= 0 && cmd.DPI[slotIndex] != singleDPI {
-				return facade.Command{}, false, fmt.Errorf("conflicting DPI for slot %d: -dpi gives %d but -dpi%d gives %d", *dpiSlotPtr, singleDPI, *dpiSlotPtr, cmd.DPI[slotIndex])
+				return facade.Command{}, false, fmt.Errorf("conflicting DPI for slot %d: --dpi gives %d but --dpi%d gives %d", *dpiSlotPtr, singleDPI, *dpiSlotPtr, cmd.DPI[slotIndex])
 			}
 			cmd.DPI[slotIndex] = singleDPI
 
 			if singleColor >= 0 {
 				if cmd.Color[slotIndex] >= 0 && cmd.Color[slotIndex] != singleColor {
-					return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: -dpi gives %d but color for this slot is %d", *dpiSlotPtr, singleColor, cmd.Color[slotIndex])
+					return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: --dpi gives %d but color for this slot is %d", *dpiSlotPtr, singleColor, cmd.Color[slotIndex])
 				}
 				cmd.Color[slotIndex] = singleColor
 			}
@@ -231,14 +252,14 @@ Examples:
 
 		if *colorIdxPtr >= 0 {
 			if cmd.Color[slotIndex] >= 0 && cmd.Color[slotIndex] != *colorIdxPtr {
-				return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: -color is %d but another source gives %d", *dpiSlotPtr, *colorIdxPtr, cmd.Color[slotIndex])
+				return facade.Command{}, false, fmt.Errorf("conflicting color for slot %d: --color is %d but another source gives %d", *dpiSlotPtr, *colorIdxPtr, cmd.Color[slotIndex])
 			}
 			cmd.Color[slotIndex] = *colorIdxPtr
 		}
 
 		if *switchSlotPtr {
 			if cmd.ActiveSlot >= 0 && cmd.ActiveSlot != *dpiSlotPtr {
-				return facade.Command{}, false, fmt.Errorf("conflicting active slot: -switch-slot uses %d but -active-slot is %d", *dpiSlotPtr, cmd.ActiveSlot)
+				return facade.Command{}, false, fmt.Errorf("conflicting active slot: --switch-slot uses %d but --active-slot is %d", *dpiSlotPtr, cmd.ActiveSlot)
 			}
 			cmd.ActiveSlot = *dpiSlotPtr
 		}

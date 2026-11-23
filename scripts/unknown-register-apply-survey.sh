@@ -56,7 +56,7 @@ Options:
 
 What this script does:
   1. Captures a baseline dump and baseline readout.
-  2. Applies controlled configuration changes with `-mode apply`.
+  2. Applies controlled configuration changes with `--mode apply`.
   3. Captures a unique-register dump after each change.
   4. Reports diffs against baseline, with focus on unknown registers.
   5. Restores the original bank1 configuration between scenarios and on exit.
@@ -238,12 +238,12 @@ run_tool_no_retry() {
 
 run_dump() {
 	local out_file="$1"
-	run_tool -mode dump >"$out_file"
+	run_tool --mode dump >"$out_file"
 }
 
 run_read_json() {
 	local out_file="$1"
-	run_tool -mode read -json >"$out_file"
+	run_tool --mode read --json >"$out_file"
 }
 
 parse_dump() {
@@ -439,7 +439,7 @@ restore_baseline() {
 			continue
 		fi
 		value="$(hex_to_dec "$hex")"
-		run_tool -mode write -reg "$reg" -regval "$value" >/dev/null
+		run_tool --mode write --reg "$reg" --regval "$value" >/dev/null
 	done
 }
 
@@ -493,7 +493,7 @@ run_scenario() {
 
 	restore_baseline >/dev/null
 
-	if run_tool -mode apply "${apply_args[@]}" >"$apply_log" 2>&1; then
+	if run_tool --mode apply "${apply_args[@]}" >"$apply_log" 2>&1; then
 		apply_ok="yes"
 	else
 		echo "  apply failed; see $apply_log"
@@ -686,7 +686,7 @@ for mode in "${RGB_MODE_LIST[@]}"; do
 	if [[ -n "$BASE_RGB_MODE" && "$mode" == "$BASE_RGB_MODE" ]]; then
 		continue
 	fi
-	run_scenario "rgb-mode-$mode" "RGB mode -> $mode (speed=$BASE_RGB_SPEED)" -rgb-mode "$mode" -speed "$BASE_RGB_SPEED"
+	run_scenario "rgb-mode-$mode" "RGB mode -> $mode (speed=$BASE_RGB_SPEED)" --rgb-mode "$mode" --speed "$BASE_RGB_SPEED"
 done
 
 echo
@@ -700,7 +700,7 @@ else
 		if [[ "$speed" == "$BASE_RGB_SPEED" ]]; then
 			continue
 		fi
-		run_scenario "rgb-speed-$speed" "RGB speed -> $speed (mode=$BASE_RGB_MODE)" -rgb-mode "$BASE_RGB_MODE" -speed "$speed"
+		run_scenario "rgb-speed-$speed" "RGB speed -> $speed (mode=$BASE_RGB_MODE)" --rgb-mode "$BASE_RGB_MODE" --speed "$speed"
 	done
 fi
 
@@ -712,7 +712,7 @@ for action in "${CPI_ACTION_LIST[@]}"; do
 	if [[ -n "$BASE_CPI_ACTION" && "$action" == "$BASE_CPI_ACTION" ]]; then
 		continue
 	fi
-	run_scenario "cpi-$action" "CPI action -> $action" -cpi-action "$action"
+	run_scenario "cpi-$action" "CPI action -> $action" --cpi-action "$action"
 done
 
 echo
@@ -723,7 +723,7 @@ for slot in "${ACTIVE_SLOT_LIST[@]}"; do
 	if [[ -n "$BASE_ACTIVE_SLOT" && "$slot" == "$BASE_ACTIVE_SLOT" ]]; then
 		continue
 	fi
-	run_scenario "active-slot-$slot" "Active slot -> $slot" -active-slot "$slot"
+	run_scenario "active-slot-$slot" "Active slot -> $slot" --active-slot "$slot"
 done
 
 echo
@@ -745,12 +745,12 @@ for slot in 1 2 3 4; do
 	run_scenario \
 		"dpi${slot}-value-$alt_dpi" \
 		"Slot $slot DPI -> $alt_dpi (color=${BASE_SLOT_COLOR["$slot"]})" \
-		"-dpi${slot}" "${alt_dpi}:${BASE_SLOT_COLOR["$slot"]}"
+		"--dpi${slot}" "${alt_dpi}:${BASE_SLOT_COLOR["$slot"]}"
 
 	run_scenario \
 		"dpi${slot}-color-$alt_color" \
 		"Slot $slot color -> $alt_color (dpi=${BASE_SLOT_DPI["$slot"]})" \
-		"-dpi${slot}" "${BASE_SLOT_DPI["$slot"]}:${alt_color}"
+		"--dpi${slot}" "${BASE_SLOT_DPI["$slot"]}:${alt_color}"
 done
 
 if [[ "$WITH_RATES" == "1" ]]; then
@@ -762,7 +762,7 @@ if [[ "$WITH_RATES" == "1" ]]; then
 		if [[ -n "$BASE_RATE_HZ" && "$rate" == "$BASE_RATE_HZ" ]]; then
 			continue
 		fi
-		run_scenario "rate-$rate" "Rate -> ${rate}Hz" -rate "$rate"
+		run_scenario "rate-$rate" "Rate -> ${rate}Hz" --rate "$rate"
 	done
 fi
 
