@@ -36,8 +36,12 @@ type Command struct {
 	ExperimentalAll        bool
 }
 
+type deviceRunner interface {
+	Run(func(kernel.Device) error) error
+}
+
 type App struct {
-	kernel *kernel.Kernel
+	kernel deviceRunner
 }
 
 const (
@@ -46,7 +50,7 @@ const (
 	dumpRegEnd uint16 = 127
 )
 
-func New(k *kernel.Kernel) *App {
+func New(k deviceRunner) *App {
 	return &App{kernel: k}
 }
 
