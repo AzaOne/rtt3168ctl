@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     echo 'Usage: ./install.sh [--user] [--udev]'
-    echo 'Install the built CLI in ~/.local/bin. Add --udev to install the USB access rule with sudo.'
+    echo 'Install the built CLI in ~/.local/bin. Only --udev copies the USB access rule and reloads udev via sudo.'
 }
 
 with_udev=false
@@ -41,7 +41,7 @@ echo "Installed $bindir/rtt3168ctl"
 
 if "$with_udev"; then
     rule=52-rtt3168ctl-093a-2533.rules
-    sudo install -D -m 0644 -- "$rule" "/etc/udev/rules.d/$rule"
+    sudo install -D -m 0644 -- "udev/$rule" "/etc/udev/rules.d/$rule"
     sudo udevadm control --reload-rules
     echo 'Reconnect the mouse to apply the USB access rule.'
 fi

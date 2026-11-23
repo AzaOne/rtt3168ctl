@@ -164,14 +164,14 @@ MOUSE_VID=0x093A MOUSE_PID=0x2533 ./build/rtt3168ctl --mode read
 ```
 
 **Configuring udev rules:**
-To install the CLI and the bundled rule for `093a:2533`, run:
+To install the CLI and the [bundled udev rule for `093a:2533`](udev/52-rtt3168ctl-093a-2533.rules), run:
 
 ```bash
 ./build.sh
 ./install.sh --user --udev
 ```
 
-The installer uses `sudo` to copy the rule to `/etc/udev/rules.d/` and reload udev. Reconnect the mouse afterward. The rule grants all local users read/write access to matching device nodes.
+Only with `--udev` does the installer use `sudo` to copy the rule to `/etc/udev/rules.d/` and reload udev. Reconnect the mouse afterward. The rule grants all local users read/write access to matching device nodes.
 
 ## Building from Source
 
