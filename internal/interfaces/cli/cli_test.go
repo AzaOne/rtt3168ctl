@@ -72,8 +72,8 @@ func TestOptionSpelling(t *testing.T) {
 	}
 	for _, arg := range []string{"-h", "--help"} {
 		var usage bytes.Buffer
-		_, exit, err := Parse([]string{arg}, "rtt3168ctl", io.Discard, &usage)
-		if err != nil || !exit || !strings.Contains(usage.String(), "--mode") {
+		_, exit, err := Parse([]string{arg}, "./build/rtt3168ctl", io.Discard, &usage)
+		if err != nil || !exit || !strings.HasPrefix(usage.String(), "rtt3168ctl "+versionString()+" — USB mouse configuration for RTT3168CG2\n\nUsage: rtt3168ctl --mode <command> [options]\n") {
 			t.Errorf("%s: exit=%v err=%v usage=%q", arg, exit, err, usage.String())
 		}
 	}

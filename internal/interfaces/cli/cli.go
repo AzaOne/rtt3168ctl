@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -14,7 +15,18 @@ import (
 
 var buildVersion = "dev"
 
+func versionString() string {
+	if buildVersion != "dev" {
+		return buildVersion
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return "dev"
+}
+
 func Parse(args []string, binName string, out, errOut io.Writer) (facade.Command, bool, error) {
+	binName = filepath.Base(binName)
 	fs := flag.NewFlagSet(binName, flag.ContinueOnError)
 	fs.SetOutput(errOut)
 
@@ -46,8 +58,9 @@ func Parse(args []string, binName string, out, errOut io.Writer) (facade.Command
 	expAllPtr := fs.Bool("exp-all", false, "In 'experimental' mode print every sample, not only changes")
 
 	fs.Usage = func() {
+		fmt.Fprintf(errOut, "rtt3168ctl %s — USB mouse configuration for RTT3168CG2\n\n", versionString())
 		helpText := fmt.Sprintf(`Usage: %s --mode <command> [options]
-		
+
 Commands:
   read      Read current hardware configuration
   apply     Apply one or more settings
@@ -147,11 +160,7 @@ Examples:
 	}
 
 	if *version {
-		v := buildVersion
-		if info, ok := debug.ReadBuildInfo(); ok && v == "dev" && info.Main.Version != "" && info.Main.Version != "(devel)" {
-			v = info.Main.Version
-		}
-		_, err := fmt.Fprintln(out, "rtt3168ctl", v)
+		_, err := fmt.Fprintln(out, "rtt3168ctl", versionString())
 		return facade.Command{}, true, err
 	}
 
