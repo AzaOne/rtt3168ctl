@@ -184,6 +184,12 @@ Run `./build.sh` from the checkout. It performs the same checks used by CI and r
 
 After these checks pass, the script writes `build/rtt3168ctl`. It accepts Go build flags, for example `./build.sh -ldflags="-s -w"`. For cross-builds, the host needs race-detector support and native libusb development files in addition to the target toolchain and libraries.
 
+## Release versioning
+
+Tag the tested release commit with `MAJOR.MINOR.PATCH` (for example, `1.0.0`) and push the tag to trigger the release workflow. Increase the major version for incompatible CLI, configuration or output changes, the minor version for backward-compatible features, and the patch version for fixes. The move to double-dash long options is a breaking CLI change.
+
+In a checkout with a numeric release tag, `./build.sh` embeds the nearest release, commits since that tag, and abbreviated Git hash. For example, `1.0.0-0-gabc1234` is the tagged commit and `1.0.0-3-gdef5678` is three commits later. Until the first numeric release tag, the build reports the abbreviated hash. Modified tracked files add `-dirty`. Source archives without Git metadata report `dev`.
+
 ## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/AzaOne/rtt3168ctl/issues).

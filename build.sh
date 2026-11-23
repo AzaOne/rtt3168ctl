@@ -21,4 +21,16 @@ go vet ./...
 )
 
 mkdir -p build
-go build -trimpath "$@" -o build/rtt3168ctl ./cmd/rtt3168ctl
+version=$(git describe --tags --match '[0-9]*.[0-9]*.[0-9]*' --exclude '*[!0-9.]*' --exclude '*.*.*.*' --long --always --dirty 2>/dev/null || echo dev)
+version_flag="-X rtt3168ctl/internal/interfaces/cli.buildVersion=$version"
+# Keep linker options supplied by the caller (including release stripping).
+build_args=()
+while (( $# )); do
+    case "$1" in
+        -ldflags) build_args+=("-ldflags" "${2:?missing linker flags} $version_flag"); shift ;;
+        -ldflags=*) build_args+=("$1 $version_flag") ;;
+        *) build_args+=("$1") ;;
+    esac
+    shift
+done
+go build -trimpath -ldflags "$version_flag" "${build_args[@]}" -o build/rtt3168ctl ./cmd/rtt3168ctl
